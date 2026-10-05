@@ -14,6 +14,22 @@ const borrando = ref(null)
 const hoyISO = iso(hoy)
 const estado = (v) => (v.vuelta < hoyISO ? 'Ya fue' : v.ida <= hoyISO ? 'En curso' : 'Próximo')
 
+const proximo = computed(() => ordenados.value.find((v) => v.vuelta >= hoyISO) || null)
+const otros = computed(() => ordenados.value.filter((v) => v !== proximo.value))
+const diasPara = (v) => Math.round((new Date(v.ida + 'T12:00:00') - new Date(hoyISO + 'T12:00:00')) / 86400000)
+const cuenta = (v) => {
+  const d = diasPara(v)
+  if (d > 1) return 'Faltan ' + d + ' días'
+  if (d === 1) return 'Es mañana'
+  if (d === 0) return 'Es hoy'
+  const r = resumenViaje(v)
+  return 'Día ' + Math.min(1 - d, r.dias) + ' de ' + r.dias
+}
+const pctDe = (v) => {
+  const r = resumenViaje(v)
+  return r.total ? Math.round((r.listos / r.total) * 100) : 0
+}
+
 const ordenados = computed(() =>
   [...s.viajes].sort((a, b) => {
     const pa = a.vuelta < hoyISO ? 1 : 0
@@ -43,10 +59,29 @@ function confirmarBorrar(id) {
   <main id="contenido" class="viajes">
     <h1>¿Para dónde vas?</h1>
 
-    <ul class="cards" v-if="s.viajes.length">
-      <li v-for="v in ordenados" :key="v.id" class="trip" :class="{ pasado: estado(v) === 'Ya fue' }">
+    <div v-if="!s.viajes.length" class="panel vacio">
+      <strong>Todavía no tienes viajes</strong>
+      <span class="hint">Crea el primero y planea tu maleta día por día.</span>
+    </div>
+
+    <article v-if="proximo" class="hero">
+      <span class="estado now">{{ estado(proximo) === 'En curso' ? 'Viaje en curso' : 'Próximo viaje' }}</span>
+      <h2>{{ proximo.destino }}</h2>
+      <span class="fechas">{{ rangoTexto(proximo) }} · {{ cuenta(proximo) }}</span>
+      <div class="bar" role="progressbar" :aria-valuenow="pctDe(proximo)" aria-valuemin="0" aria-valuemax="100" :aria-label="'Maleta ' + pctDe(proximo) + '%'">
+        <i :style="{ width: pctDe(proximo) + '%' }"></i>
+      </div>
+      <span class="mini">
+        Maleta {{ pctDe(proximo) }}% · {{ resumenViaje(proximo).dias }} días · {{ resumenViaje(proximo).conPinta }} pintas listas
+      </span>
+      <button type="button" class="btn" @click="abrirViaje(proximo.id)">Continuar viaje</button>
+    </article>
+
+    <h2 v-if="otros.length" class="sub">Mis viajes</h2>
+    <ul class="cards" v-if="otros.length">
+      <li v-for="v in otros" :key="v.id" class="trip" :class="{ pasado: estado(v) === 'Ya fue' }">
         <button type="button" class="trip-main" @click="abrirViaje(v.id)">
-          <span class="estado" :class="estado(v) === 'En curso' ? 'now' : ''">{{ estado(v) }}</span>
+          <span class="estado">{{ estado(v) }}</span>
           <strong>{{ v.destino }}</strong>
           <span class="fechas">{{ rangoTexto(v) }} · {{ resumenViaje(v).dias }} días</span>
           <span class="mini">
@@ -93,6 +128,39 @@ function confirmarBorrar(id) {
 </template>
 
 <style scoped>
+.hero {
+  background: var(--surface);
+  border: 1.5px solid var(--lav);
+  border-radius: 20px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.hero h2 {
+  margin: 0;
+  font-size: clamp(24px, 7vw, 30px);
+  line-height: 1.1;
+}
+.hero .bar {
+  margin-top: 6px;
+}
+.hero .btn {
+  margin-top: 8px;
+  align-self: flex-start;
+}
+.sub {
+  margin: 6px 0 0;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+}
+.vacio {
+  text-align: center;
+  align-items: center;
+}
 .viajes {
   display: flex;
   flex-direction: column;

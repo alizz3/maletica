@@ -14,6 +14,17 @@ export const GRUPOS = [
   'Extras'
 ]
 
+export const ACTIVIDADES = ['Viaje', 'Paseo', 'Piscina', 'Salida de noche', 'En casa', 'Trabajo', 'Regreso']
+
+// Cantidad automática según los días del viaje
+//  dias+1   → ropa interior, medias
+//  noches/4 → pijama (una cada 4 noches)
+export function reglaPorNombre(nombre) {
+  if (/^ropa interior|^calzones|^cucos|^medias/i.test(nombre)) return 'dias+1'
+  if (/pijama/i.test(nombre)) return 'noches/4'
+  return null
+}
+
 function prendasBase() {
   let n = 0
   const P = (nombre, cat) => ({ id: 'p' + ++n, nombre, cat })
@@ -37,7 +48,7 @@ function prendasBase() {
 
 export function plantillaBase() {
   let m = 0
-  const B = (nombre, grupo) => ({ id: 'b' + ++m, nombre, grupo })
+  const B = (nombre, grupo) => ({ id: 'b' + ++m, nombre, grupo, regla: reglaPorNombre(nombre) })
   return [
     B('Portátil', 'Tecnología'),
     B('Cargador del portátil', 'Tecnología'),
@@ -86,6 +97,7 @@ export function semilla() {
           '2026-10-09': [...viaje]
         },
         basicos: JSON.parse(JSON.stringify(plantilla)),
+        info: { '2026-10-05': { actividad: 'Viaje' }, '2026-10-09': { actividad: 'Regreso' } },
         checks: { ida: {}, vuelta: {} },
         fase: 'ida'
       }
@@ -113,6 +125,7 @@ export function migrarV1(old) {
         vuelta: old.regreso === 'jue' ? '2026-10-08' : '2026-10-09',
         pintas,
         basicos: old.basicos || plantillaBase(),
+        info: { '2026-10-05': { actividad: 'Viaje' } },
         checks: old.checks || { ida: {}, vuelta: {} },
         fase: old.fase || 'ida'
       }
@@ -121,9 +134,22 @@ export function migrarV1(old) {
   }
 }
 
+// Completa campos que versiones anteriores no tenían
+function completar(d) {
+  const conRegla = (b) => (b.regla === undefined ? { ...b, regla: reglaPorNombre(b.nombre) } : b)
+  d.plantilla = (d.plantilla || []).map(conRegla)
+  d.viajes.forEach((v) => {
+    v.basicos = (v.basicos || []).map(conRegla)
+    if (!v.info) v.info = {}
+    if (!v.checks) v.checks = { ida: {}, vuelta: {} }
+    if (!v.fase) v.fase = 'ida'
+  })
+  return d
+}
+
 export function normalizar(data) {
   if (!data || typeof data !== 'object') return semilla()
-  if (data.version === 2 && Array.isArray(data.viajes)) return data
-  if (data.prendas && data.pintas) return migrarV1(data)
+  if (data.version === 2 && Array.isArray(data.viajes)) return completar(data)
+  if (data.prendas && data.pintas) return completar(migrarV1(data))
   return semilla()
 }

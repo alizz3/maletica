@@ -1,8 +1,14 @@
 <script setup>
 import { ref } from 'vue'
-import { viaje, rango, dias, irAViajes } from '../store.js'
+import { viaje, rango, dias, irAViajes, borrarViaje } from '../store.js'
 
 const editando = ref(false)
+const confirmar = ref(false)
+function borrar() {
+  const id = viaje.value.id
+  irAViajes()
+  borrarViaje(id)
+}
 </script>
 
 <template>
@@ -30,6 +36,14 @@ const editando = ref(false)
         </div>
       </div>
       <p class="hint" style="margin: 0">Si acortas el viaje, las pintas de los días que quedan por fuera se guardan por si vuelves a alargarlo.</p>
+      <div class="row">
+        <button v-if="!confirmar" type="button" class="link danger" @click="confirmar = true">Borrar este viaje</button>
+        <template v-else>
+          <span class="hint">¿Seguro? Se borran sus pintas y su maleta.</span>
+          <button type="button" class="btn sm del-btn" @click="borrar">Sí, borrar</button>
+          <button type="button" class="btn ghost sm" @click="confirmar = false">Cancelar</button>
+        </template>
+      </div>
     </div>
   </header>
 </template>
@@ -68,6 +82,17 @@ const editando = ref(false)
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 10px;
+}
+.danger {
+  color: var(--warn);
+  padding: 0;
+}
+.sm {
+  padding: 6px 12px;
+  font-size: 13px;
+}
+.del-btn {
+  background: var(--warn);
 }
 .dos > div {
   min-width: 0;

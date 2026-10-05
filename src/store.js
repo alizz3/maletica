@@ -1,6 +1,6 @@
 // Estado global de Maletica. Se guarda en este navegador y, si inicias sesión, en tu cuenta.
 import { reactive, computed, watch } from 'vue'
-import { CATS, GRUPOS, normalizar } from './data/semilla.js'
+import { CATS, GRUPOS, ACTIVIDADES, normalizar, reglaPorNombre } from './data/semilla.js'
 
 const KEY = 'maletica-v2'
 const KEY_V1 = 'maletica-v1'
@@ -92,6 +92,7 @@ export function crearViaje({ destino, ida, vuelta }) {
     vuelta,
     pintas: {},
     basicos: JSON.parse(JSON.stringify(s.plantilla)),
+    info: { [ida]: { actividad: 'Viaje' }, ...(vuelta !== ida ? { [vuelta]: { actividad: 'Regreso' } } : {}) },
     checks: { ida: {}, vuelta: {} },
     fase: 'ida'
   })
@@ -178,7 +179,25 @@ export function sacarDeMaleta(id) {
 
 // ---------- Básicos del viaje ----------
 export function addBasico(nombre, grupo) {
-  viaje.value.basicos.push({ id: 'b' + ++s.seq, nombre, grupo })
+  viaje.value.basicos.push({ id: 'b' + ++s.seq, nombre, grupo, regla: reglaPorNombre(nombre) })
+}
+
+// Cuántas unidades llevar según los días (ropa interior, medias, pijama)
+export function cantidad(b, numDias = dias.value.length) {
+  if (b.regla === 'dias+1') return numDias + 1
+  if (b.regla === 'noches/4') return Math.max(1, Math.ceil((numDias - 1) / 4))
+  return null
+}
+
+// ---------- Actividad y notas por día ----------
+export function infoDia(fecha) {
+  return (viaje.value.info && viaje.value.info[fecha]) || {}
+}
+export function setInfo(fecha, campo, valor) {
+  const v = viaje.value
+  if (!v.info) v.info = {}
+  if (!v.info[fecha]) v.info[fecha] = {}
+  v.info[fecha][campo] = valor
 }
 export function delBasico(id) {
   viaje.value.basicos = viaje.value.basicos.filter((b) => b.id !== id)
@@ -199,10 +218,63 @@ export function textoLista() {
   let t = 'Maleta ' + v.destino + ' (' + rango.value + ')\n\nRopa:\n' + ropaMaleta.value.map((p) => '- ' + p.nombre).join('\n')
   GRUPOS.forEach((g) => {
     const l = basicosDe(g)
-    if (l.length) t += '\n\n' + g + ':\n' + l.map((b) => '- ' + b.nombre).join('\n')
+    if (l.length) t += '\n\n' + g + ':\n' + l.map((b) => '- ' + b.nombre + (cantidad(b) ? ' ×' + cantidad(b) : '')).join('\n')
   })
   t += '\n\nPuesto: ' + puesto.value.map((p) => p.nombre).join(', ')
   return t
 }
 
-export { CATS, GRUPOS }
+// ---------- Avisos inteligentes ----------
+export const avisos = computed(() => {
+  const v = viaje.value
+  if (!v) return []
+  const out = []
+
+  // Días sin pinta
+  const sinPinta = dias.value.filter((d) => !(v.pintas[d.key] || []).length)
+  if (sinPinta.length)
+    out.push({ tipo: 'falta', texto: 'Falta la pinta de ' + sinPinta.map((d) => d.corto + ' ' + d.num).join(', ') + '.' })
+
+  // Empacaste algo que ya no está en ninguna pinta (cambiaste un outfit)
+  const enUso = new Set([...ropaMaleta.value.map((p) => p.id), ...puesto.value.map((p) => p.id)])
+  const huerfanas = Object.keys(v.checks.ida)
+    .filter((k) => k.startsWith('p:') && v.checks.ida[k] && !enUso.has(k.slice(2)))
+    .map((k) => s.prendas.find((p) => p.id === k.slice(2)))
+    .filter(Boolean)
+  huerfanas.forEach((p) =>
+    out.push({ tipo: 'sobra', texto: p.nombre + ' ya no está en ninguna pinta. ¿La sacas de la maleta?', id: p.id })
+  )
+
+  // Prendas que ocupan espacio y se usan un solo día
+  const pesadas = ropaMaleta.value.filter((p) => ['Abajo', 'Zapatos', 'Abrigo'].includes(p.cat) && usos.value[p.id] === 1)
+  if (pesadas.length)
+    out.push({
+      tipo: 'exceso',
+      texto: pesadas.length === 1
+        ? pesadas[0].nombre + ' se usa un solo día. Si la cambias por algo que ya llevas, ahorras espacio.'
+        : pesadas.map((p) => p.nombre).join(', ') + ' se usan un solo día. Si las cambias por algo que ya llevas, ahorras espacio.'
+    })
+
+  // Lo que más reusas (buena señal)
+  const reuso = ropaMaleta.value
+    .concat(puesto.value)
+    .filter((p, i, a) => a.indexOf(p) === i && ['Abajo', 'Zapatos'].includes(p.cat) && usos.value[p.id] >= 3)
+  reuso.forEach((p) => out.push({ tipo: 'bien', texto: p.nombre + ' sale en ' + usos.value[p.id] + ' pintas. Con eso basta.' }))
+
+  return out
+})
+
+export function descartarHuerfana(id) {
+  const v = viaje.value
+  delete v.checks.ida['p:' + id]
+  delete v.checks.vuelta['p:' + id]
+}
+
+// Progreso de un grupo de la maleta
+export function progresoGrupo(items, prefijo) {
+  const v = viaje.value
+  const listos = items.filter((x) => v.checks[v.fase][prefijo + x.id]).length
+  return { listos, total: items.length }
+}
+
+export { CATS, GRUPOS, ACTIVIDADES }

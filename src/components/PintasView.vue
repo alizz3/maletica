@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, watch, nextTick } from 'vue'
-import { viaje, dias, CATS, pintaDe, prendasDe, usos, togglePrenda, addPrenda } from '../store.js'
+import { viaje, dias, CATS, ACTIVIDADES, pintaDe, prendasDe, usos, togglePrenda, addPrenda, infoDia, setInfo } from '../store.js'
 
 const diaSel = ref(0)
 watch(dias, (d) => {
@@ -9,6 +9,8 @@ watch(dias, (d) => {
 const dia = computed(() => dias.value[diaSel.value])
 const pinta = computed(() => (dia.value ? pintaDe(dia.value.key) : []))
 const porCat = (c) => pinta.value.filter((p) => p.cat === c)
+const info = computed(() => (dia.value ? infoDia(dia.value.key) : {}))
+const elegirActividad = (a) => setInfo(dia.value.key, 'actividad', info.value.actividad === a ? '' : a)
 const enDia = (id) => !!dia.value && (viaje.value.pintas[dia.value.key] || []).includes(id)
 
 // Agregar una prenda nueva sin salir de las pintas
@@ -45,6 +47,7 @@ function guardarNueva(c) {
         @click="diaSel = i"
       >
         <span>{{ d.corto }}</span><strong>{{ d.num }}</strong>
+        <em v-if="viaje.info?.[d.key]?.actividad">{{ viaje.info[d.key].actividad }}</em>
       </button>
     </div>
 
@@ -54,6 +57,25 @@ function guardarNueva(c) {
         <span v-if="diaSel === 0" class="badge">Ida · lo llevas puesto</span>
         <span v-else-if="diaSel === dias.length - 1" class="badge">Regreso</span>
       </div>
+      <div class="actividad" role="group" aria-label="¿Qué vas a hacer este día?">
+        <button
+          v-for="a in ACTIVIDADES"
+          :key="a"
+          type="button"
+          class="act"
+          :class="{ on: info.actividad === a }"
+          :aria-pressed="info.actividad === a"
+          @click="elegirActividad(a)"
+        >{{ a }}</button>
+      </div>
+      <input
+        :id="'notas-' + dia.key"
+        class="notas"
+        :value="info.notas || ''"
+        placeholder="Notas del día: caminar bastante, cena elegante…"
+        aria-label="Notas del día"
+        @change="setInfo(dia.key, 'notas', $event.target.value)"
+      />
       <dl class="outfit" v-if="pinta.length">
         <template v-for="c in CATS" :key="c">
           <template v-if="porCat(c).length">
@@ -100,6 +122,44 @@ function guardarNueva(c) {
 <style scoped>
 .day.lleno:not(.on) strong {
   color: var(--lav);
+}
+.day em {
+  display: block;
+  font-style: normal;
+  font-size: 10px;
+  color: var(--pink);
+  max-width: 64px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.actividad {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.act {
+  border: 1.5px solid var(--line);
+  background: transparent;
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.act.on {
+  background: var(--pink-soft);
+  border-color: var(--pink);
+  color: var(--pink);
+  font-weight: 600;
+}
+.notas {
+  border: 1.5px solid var(--line);
+  background: var(--bg);
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-size: 13px;
+  width: 100%;
+  min-width: 0;
 }
 .add-chip {
   border-style: dashed;
