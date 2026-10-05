@@ -3,7 +3,30 @@
 // - plantilla: básicos que se copian a cada viaje nuevo
 // - viajes: cada uno con destino, fechas, pintas por fecha y su propia maleta
 
-export const CATS = ['Arriba', 'Abajo', 'Zapatos', 'Abrigo', 'Accesorios']
+// Categorías que se arman día por día en las pintas
+export const CATS_PINTA = ['Arriba', 'Abajo', 'Zapatos', 'Abrigo', 'Accesorios']
+// Piezas que se eligen una por una para el viaje (no por día)
+export const CATS_SUELTAS = ['Ropa interior', 'Medias']
+export const CATS = [...CATS_PINTA, ...CATS_SUELTAS]
+
+// Si un básico genérico ("Ropa interior", "Medias") corresponde a una categoría de piezas sueltas
+export function catDeBasico(nombre) {
+  if (/^medias/i.test(nombre)) return 'Medias'
+  if (/^ropa interior|^calzones|^cucos|^panties/i.test(nombre)) return 'Ropa interior'
+  return null
+}
+
+// Piezas de ejemplo (de la lista de julio)
+function interiorBase(sig) {
+  return [
+    ['Cuco negro de encaje', 'Ropa interior'],
+    ['Cuco negro "Only One"', 'Ropa interior'],
+    ['Cuco blanco "Secret"', 'Ropa interior'],
+    ['Medias de gato rosadas', 'Medias'],
+    ['Medias de leopardo', 'Medias'],
+    ['Medias de rayas negras/blancas', 'Medias']
+  ].map(([nombre, cat]) => ({ id: 'p' + sig(), nombre, cat }))
+}
 
 export const GRUPOS = [
   'Ropa extra',
@@ -75,12 +98,15 @@ export function plantillaBase() {
 
 export function semilla() {
   const prendas = prendasBase()
+  let n = 50
+  prendas.push(...interiorBase(() => ++n))
   const id = (nombre) => prendas.find((p) => p.nombre === nombre).id
   const viaje = ['Jean de brillitos', 'Esqueleto negro', 'Buzo blanco manga campana', 'Tenis rojos'].map(id)
   const plantilla = plantillaBase()
 
   return {
     version: 2,
+    interiorAgregado: true,
     prendas,
     plantilla,
     viajes: [
@@ -97,6 +123,7 @@ export function semilla() {
           '2026-10-09': [...viaje]
         },
         basicos: JSON.parse(JSON.stringify(plantilla)),
+        llevo: [],
         info: { '2026-10-05': { actividad: 'Viaje' }, '2026-10-09': { actividad: 'Regreso' } },
         checks: { ida: {}, vuelta: {} },
         fase: 'ida'
@@ -141,9 +168,18 @@ function completar(d) {
   d.viajes.forEach((v) => {
     v.basicos = (v.basicos || []).map(conRegla)
     if (!v.info) v.info = {}
+    if (!v.llevo) v.llevo = []
     if (!v.checks) v.checks = { ida: {}, vuelta: {} }
     if (!v.fase) v.fase = 'ida'
   })
+  // Una sola vez: agrega las piezas de ropa interior y medias de ejemplo
+  if (!d.interiorAgregado) {
+    if (!d.prendas.some((p) => CATS_SUELTAS.includes(p.cat))) {
+      d.seq = Math.max(d.seq || 100, 100)
+      d.prendas.push(...interiorBase(() => ++d.seq))
+    }
+    d.interiorAgregado = true
+  }
   return d
 }
 

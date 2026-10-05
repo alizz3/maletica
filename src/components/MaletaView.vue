@@ -3,7 +3,8 @@ import { ref, reactive, computed } from 'vue'
 import {
   viaje, dias, CATS, GRUPOS, ropaMaleta, puesto, seQueda, usos, basicosDe,
   total, hechos, pct, chk, setChk, addBasico, delBasico, sacarDeMaleta, textoLista,
-  cantidad, avisos, descartarHuerfana, progresoGrupo
+  cantidad, avisos, descartarHuerfana, progresoGrupo,
+  CATS_SUELTAS, prendasDe, llevoDe, llevaPieza, toggleLlevo, recomendado, addPrenda
 } from '../store.js'
 
 const pesadas = ['Abajo', 'Zapatos', 'Abrigo'] // ocupan espacio: avisar si solo se usan un día
@@ -68,6 +69,16 @@ const visibleRopa = (items) => (soloPendientes.value ? items.filter((p) => !chk(
 const visibleBas = (items) => (soloPendientes.value ? items.filter((b) => !chk('b:' + b.id)) : items)
 const progRopa = computed(() => progresoGrupo(ropaMaleta.value, 'p:'))
 const faltan = computed(() => total.value - hechos.value)
+// Ropa interior y medias: piezas concretas
+const nuevaPieza = reactive({ cat: null, nombre: '' })
+function agregarPieza(cat) {
+  const n = nuevaPieza.nombre.trim()
+  if (n) toggleLlevo(addPrenda(n, cat))
+  nuevaPieza.cat = null
+  nuevaPieza.nombre = ''
+}
+const piezasVisibles = (cat) => (soloPendientes.value ? llevoDe(cat).filter((p) => !chk('p:' + p.id)) : llevoDe(cat))
+
 const iconoAviso = { falta: '!', sobra: '↩', exceso: '⇣', bien: '✓' }
 </script>
 
@@ -143,6 +154,56 @@ const iconoAviso = { falta: '!', sobra: '↩', exceso: '⇣', bien: '✓' }
       <p v-else-if="soloPendientes && progRopa.listos === progRopa.total" class="empty" style="margin: 0">Toda la ropa está empacada.</p>
     </div>
 
+    <div class="panel">
+      <div class="ph">
+        <h3>Ropa interior y medias</h3>
+      </div>
+      <div v-for="cat in CATS_SUELTAS" :key="cat" class="suelta">
+        <div class="ph">
+          <h4>{{ cat }}</h4>
+          <span class="gp" :class="{ full: llevoDe(cat).length >= recomendado() }">
+            {{ llevoDe(cat).length }} de {{ recomendado() }} {{ cat === 'Medias' ? 'pares' : 'piezas' }}
+          </span>
+        </div>
+
+        <p class="hint" style="margin: 0; font-size: 12px">
+          {{ viaje.fase === 'ida' ? 'Toca las que llevas:' : 'Márcalas mientras empacas para volver. La que quede sin marcar, se quedó.' }}
+        </p>
+        <div class="chips" v-if="viaje.fase === 'ida'">
+          <button
+            v-for="p in prendasDe(cat)"
+            :key="p.id"
+            type="button"
+            class="chip"
+            :class="{ on: llevaPieza(p.id) }"
+            :aria-pressed="llevaPieza(p.id)"
+            @click="toggleLlevo(p.id)"
+          >{{ p.nombre }}</button>
+          <form v-if="nuevaPieza.cat === cat" class="chip-form" @submit.prevent="agregarPieza(cat)">
+            <input
+              :id="'pieza-' + cat"
+              v-model="nuevaPieza.nombre"
+              :placeholder="cat === 'Medias' ? 'Ej: Medias tobilleras blancas' : 'Ej: Tanga negra, encaje a los lados solo al frente'"
+              :aria-label="'Describe la pieza de ' + cat.toLowerCase()"
+              autocomplete="off"
+            />
+            <button class="btn sm" type="submit">Agregar</button>
+          </form>
+          <button v-else type="button" class="chip add-chip" @click="nuevaPieza.cat = cat">+ Describir otra</button>
+        </div>
+
+        <ul class="list" v-if="llevoDe(cat).length">
+          <li v-for="p in piezasVisibles(cat)" :key="p.id">
+            <label>
+              <input type="checkbox" :id="'chk-s-' + p.id" :checked="chk('p:' + p.id)" @change="setChk('p:' + p.id, $event.target.checked)" />
+              <span :class="{ done: chk('p:' + p.id) }">{{ p.nombre }}</span>
+            </label>
+            <button v-if="viaje.fase === 'ida'" type="button" class="del" @click="toggleLlevo(p.id)" :aria-label="'No llevar ' + p.nombre">×</button>
+          </li>
+        </ul>
+      </div>
+    </div>
+
     <template v-for="g in GRUPOS" :key="g">
       <div class="panel" v-if="basicosDe(g).length && (!soloPendientes || visibleBas(basicosDe(g)).length)">
         <div class="ph">
@@ -177,6 +238,39 @@ const iconoAviso = { falta: '!', sobra: '↩', exceso: '⇣', bien: '✓' }
 </template>
 
 <style scoped>
+.suelta {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 4px;
+}
+.suelta + .suelta {
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+}
+.chip-form {
+  display: flex;
+  gap: 6px;
+  flex: 1 1 100%;
+}
+.chip-form input {
+  flex: 1;
+  min-width: 0;
+  border: 1.5px solid var(--lav);
+  background: var(--surface);
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 13px;
+}
+.add-chip {
+  border-style: dashed;
+  color: var(--lav);
+  font-weight: 600;
+}
+.sm {
+  padding: 6px 12px;
+  font-size: 13px;
+}
 .ph {
   display: flex;
   justify-content: space-between;

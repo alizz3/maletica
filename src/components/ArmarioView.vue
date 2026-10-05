@@ -1,6 +1,6 @@
 <script setup>
 import { reactive } from 'vue'
-import { s, CATS, GRUPOS, prendasDe, usos, addPrenda, delPrenda, renombrarPrenda } from '../store.js'
+import { s, CATS, CATS_SUELTAS, GRUPOS, prendasDe, usos, addPrenda, delPrenda, renombrarPrenda } from '../store.js'
 
 const nueva = reactive({ nombre: '', cat: 'Arriba' })
 function agregar() {
@@ -28,7 +28,7 @@ const borrarBase = (id) => (s.plantilla = s.plantilla.filter((b) => b.id !== id)
       <h2 id="t-armario">Tu armario</h2>
       <p class="hint" style="margin: 0">Toca el nombre de una prenda para corregirlo. Lo que agregues aquí aparece en las pintas de todos tus viajes.</p>
       <form class="add" @submit.prevent="agregar">
-        <input id="nueva-prenda" v-model="nueva.nombre" placeholder="Ej: Sandalias blancas" aria-label="Nombre de la prenda" autocomplete="off" />
+        <input id="nueva-prenda" v-model="nueva.nombre" placeholder="Ej: Sandalias blancas, tanga negra de encaje…" aria-label="Nombre de la prenda" autocomplete="off" />
         <select id="nueva-cat" v-model="nueva.cat" aria-label="Categoría">
           <option v-for="c in CATS" :key="c">{{ c }}</option>
         </select>
@@ -36,6 +36,9 @@ const borrarBase = (id) => (s.plantilla = s.plantilla.filter((b) => b.id !== id)
       </form>
       <div class="group" v-for="c in CATS" :key="c">
         <h3>{{ c }}</h3>
+        <p v-if="CATS_SUELTAS.includes(c)" class="hint" style="margin: 0; font-size: 12px">
+          Describe cada pieza para reconocerla (color, tipo, detalle). En la Maleta de cada viaje eliges cuáles llevas.
+        </p>
         <ul class="list">
           <li v-for="p in prendasDe(c)" :key="p.id">
             <input

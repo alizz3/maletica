@@ -1,6 +1,6 @@
 // Estado global de Maletica. Se guarda en este navegador y, si inicias sesión, en tu cuenta.
 import { reactive, computed, watch } from 'vue'
-import { CATS, GRUPOS, ACTIVIDADES, normalizar, reglaPorNombre } from './data/semilla.js'
+import { CATS, CATS_PINTA, CATS_SUELTAS, GRUPOS, ACTIVIDADES, normalizar, reglaPorNombre, catDeBasico } from './data/semilla.js'
 
 const KEY = 'maletica-v2'
 const KEY_V1 = 'maletica-v1'
@@ -92,6 +92,7 @@ export function crearViaje({ destino, ida, vuelta }) {
     vuelta,
     pintas: {},
     basicos: JSON.parse(JSON.stringify(s.plantilla)),
+    llevo: [],
     info: { [ida]: { actividad: 'Viaje' }, ...(vuelta !== ida ? { [vuelta]: { actividad: 'Regreso' } } : {}) },
     checks: { ida: {}, vuelta: {} },
     fase: 'ida'
@@ -109,7 +110,7 @@ export function resumenViaje(v) {
   const puestoIds = new Set((ds[0] && v.pintas[ds[0].key]) || [])
   const ropa = new Set()
   ds.slice(1).forEach((d) => (v.pintas[d.key] || []).forEach((id) => !puestoIds.has(id) && ropa.add(id)))
-  const ks = [...[...ropa].map((id) => 'p:' + id), ...v.basicos.map((b) => 'b:' + b.id)]
+  const ks = [...[...ropa].map((id) => 'p:' + id), ...(v.llevo || []).map((id) => 'p:' + id), ...v.basicos.filter((b) => !reemplazado(b, v)).map((b) => 'b:' + b.id)]
   const listos = ks.filter((k) => v.checks.ida[k]).length
   const conPinta = ds.filter((d) => (v.pintas[d.key] || []).length).length
   return { dias: ds.length, conPinta, listos, total: ks.length }
@@ -119,7 +120,24 @@ export function resumenViaje(v) {
 const byId = (id) => s.prendas.find((p) => p.id === id)
 export const pintaDe = (fecha) => ((viaje.value && viaje.value.pintas[fecha]) || []).map(byId).filter(Boolean)
 export const prendasDe = (cat) => s.prendas.filter((p) => p.cat === cat)
-export const basicosDe = (g) => (viaje.value ? viaje.value.basicos.filter((b) => b.grupo === g) : [])
+export const basicosDe = (g) => (viaje.value ? viaje.value.basicos.filter((b) => b.grupo === g && !reemplazado(b, viaje.value)) : [])
+
+// ---------- Ropa interior y medias (piezas sueltas) ----------
+// El básico genérico "Ropa interior" / "Medias" se oculta cuando ya elegiste piezas concretas
+function reemplazado(b, v) {
+  const cat = b.regla === 'dias+1' ? catDeBasico(b.nombre) : null
+  return !!cat && (v.llevo || []).some((id) => s.prendas.find((p) => p.id === id && p.cat === cat))
+}
+export const llevoDe = (cat) => (viaje.value ? (viaje.value.llevo || []).map(byIdS).filter((p) => p && p.cat === cat) : [])
+const byIdS = (id) => s.prendas.find((p) => p.id === id)
+export const llevaPieza = (id) => !!viaje.value && (viaje.value.llevo || []).includes(id)
+export function toggleLlevo(id) {
+  const v = viaje.value
+  if (!v.llevo) v.llevo = []
+  const i = v.llevo.indexOf(id)
+  i >= 0 ? v.llevo.splice(i, 1) : v.llevo.push(id)
+}
+export const recomendado = () => dias.value.length + 1
 
 export const usos = computed(() => {
   const u = {}
@@ -143,7 +161,7 @@ export const ropaMaleta = computed(() => {
   return s.prendas.filter((p) => set.has(p.id))
 })
 
-export const seQueda = computed(() => s.prendas.filter((p) => !usos.value[p.id]))
+export const seQueda = computed(() => s.prendas.filter((p) => CATS_PINTA.includes(p.cat) && !usos.value[p.id]))
 
 export function togglePrenda(fecha, id) {
   const v = viaje.value
@@ -165,7 +183,10 @@ export function renombrarPrenda(id, nombre) {
 
 export function delPrenda(id) {
   s.prendas = s.prendas.filter((p) => p.id !== id)
-  s.viajes.forEach((v) => Object.keys(v.pintas).forEach((k) => (v.pintas[k] = v.pintas[k].filter((x) => x !== id))))
+  s.viajes.forEach((v) => {
+    Object.keys(v.pintas).forEach((k) => (v.pintas[k] = v.pintas[k].filter((x) => x !== id)))
+    if (v.llevo) v.llevo = v.llevo.filter((x) => x !== id)
+  })
 }
 
 // Quitar de la maleta = sacarla de las pintas desde el segundo día
@@ -205,7 +226,13 @@ export function delBasico(id) {
 
 // ---------- Checks ----------
 const keys = computed(() =>
-  viaje.value ? [...ropaMaleta.value.map((p) => 'p:' + p.id), ...viaje.value.basicos.map((b) => 'b:' + b.id)] : []
+  viaje.value
+    ? [
+        ...ropaMaleta.value.map((p) => 'p:' + p.id),
+        ...(viaje.value.llevo || []).map((id) => 'p:' + id),
+        ...viaje.value.basicos.filter((b) => !reemplazado(b, viaje.value)).map((b) => 'b:' + b.id)
+      ]
+    : []
 )
 export const total = computed(() => keys.value.length)
 export const hechos = computed(() => (viaje.value ? keys.value.filter((k) => viaje.value.checks[viaje.value.fase][k]).length : 0))
@@ -219,6 +246,10 @@ export function textoLista() {
   GRUPOS.forEach((g) => {
     const l = basicosDe(g)
     if (l.length) t += '\n\n' + g + ':\n' + l.map((b) => '- ' + b.nombre + (cantidad(b) ? ' ×' + cantidad(b) : '')).join('\n')
+  })
+  CATS_SUELTAS.forEach((cat) => {
+    const l = llevoDe(cat)
+    if (l.length) t += '\n\n' + cat + ':\n' + l.map((p) => '- ' + p.nombre).join('\n')
   })
   t += '\n\nPuesto: ' + puesto.value.map((p) => p.nombre).join(', ')
   return t
@@ -236,7 +267,7 @@ export const avisos = computed(() => {
     out.push({ tipo: 'falta', texto: 'Falta la pinta de ' + sinPinta.map((d) => d.corto + ' ' + d.num).join(', ') + '.' })
 
   // Empacaste algo que ya no está en ninguna pinta (cambiaste un outfit)
-  const enUso = new Set([...ropaMaleta.value.map((p) => p.id), ...puesto.value.map((p) => p.id)])
+  const enUso = new Set([...ropaMaleta.value.map((p) => p.id), ...puesto.value.map((p) => p.id), ...(v.llevo || [])])
   const huerfanas = Object.keys(v.checks.ida)
     .filter((k) => k.startsWith('p:') && v.checks.ida[k] && !enUso.has(k.slice(2)))
     .map((k) => s.prendas.find((p) => p.id === k.slice(2)))
@@ -254,6 +285,15 @@ export const avisos = computed(() => {
         ? pesadas[0].nombre + ' se usa un solo día. Si la cambias por algo que ya llevas, ahorras espacio.'
         : pesadas.map((p) => p.nombre).join(', ') + ' se usan un solo día. Si las cambias por algo que ya llevas, ahorras espacio.'
     })
+
+  // Pocas piezas de ropa interior o medias para los días del viaje
+  CATS_SUELTAS.forEach((cat) => {
+    const n = llevoDe(cat).length
+    const r = recomendado()
+    const unidad = cat === 'Medias' ? (n === 1 ? 'par de medias' : 'pares de medias') : n === 1 ? 'pieza de ropa interior' : 'piezas de ropa interior'
+    if (n > 0 && n < r)
+      out.push({ tipo: 'falta', texto: 'Llevas ' + n + ' ' + unidad + '; para ' + dias.value.length + ' días se recomiendan ' + r + '.' })
+  })
 
   // Lo que más reusas (buena señal)
   const reuso = ropaMaleta.value
@@ -277,4 +317,4 @@ export function progresoGrupo(items, prefijo) {
   return { listos, total: items.length }
 }
 
-export { CATS, GRUPOS, ACTIVIDADES }
+export { CATS, CATS_PINTA, CATS_SUELTAS, GRUPOS, ACTIVIDADES }
