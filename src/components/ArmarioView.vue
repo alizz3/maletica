@@ -1,35 +1,22 @@
 <script setup>
 import { reactive } from 'vue'
-import { s, viaje, CATS, CATS_SUELTAS, GRUPOS, prendasDe, addPrenda, delPrenda, renombrarPrenda, estadoEnViaje, toggleLlevo, diasDePieza } from '../store.js'
+import {
+  viaje, CATS, CATS_ROPA, CATS_COSAS, CATS_SUELTAS, prendasDe, addPrenda, delPrenda, renombrarPrenda,
+  enMaleta, esPuesta, toggleMaleta, diasDePieza
+} from '../store.js'
 
 const nueva = reactive({ nombre: '', cat: 'Arriba' })
 function agregar() {
   const n = nueva.nombre.trim()
   if (!n) return
-  const id = addPrenda(n, nueva.cat)
-  if (viaje.value) toggleLlevo(id) // lo nuevo entra directo a la maleta de este viaje
+  addPrenda(n, nueva.cat)
   nueva.nombre = ''
 }
 
-// Básicos que se copian a cada viaje nuevo
-const nuevoB = reactive({ nombre: '', grupo: 'Tecnología' })
-function agregarBase() {
-  const n = nuevoB.nombre.trim()
-  if (!n) return
-  s.plantilla.push({ id: 'b' + ++s.seq, nombre: n, grupo: nuevoB.grupo })
-  nuevoB.nombre = ''
-}
-const etiqueta = (id) => {
-  const e = estadoEnViaje(id)
-  if (e === 'puesta') return 'Puesta'
-  if (e === 'pinta') return 'En pinta · ' + diasDePieza(id).join(', ')
-  if (e === 'extra') return '✓ En la maleta'
-  return '+ Llevar'
-}
-const fija = (id) => ['puesta', 'pinta'].includes(estadoEnViaje(id))
-
-const baseDe = (g) => s.plantilla.filter((b) => b.grupo === g)
-const borrarBase = (id) => (s.plantilla = s.plantilla.filter((b) => b.id !== id))
+const secciones = [
+  { titulo: 'Ropa', cats: CATS_ROPA },
+  { titulo: 'Cosas', cats: CATS_COSAS }
+]
 </script>
 
 <template>
@@ -37,20 +24,26 @@ const borrarBase = (id) => (s.plantilla = s.plantilla.filter((b) => b.id !== id)
     <div class="panel">
       <h2 id="t-armario">Tu armario</h2>
       <p class="hint" style="margin: 0">
-        Toca <b>+ Llevar</b> para meter una prenda en la maleta de {{ viaje?.destino || 'este viaje' }}. Lo que agregues nuevo entra a la maleta solo.
+        Todo lo que tienes, ropa y cosas. Toca <b>+ Llevar</b> para meter algo en la maleta de {{ viaje?.destino || 'este viaje' }}.
         Toca el nombre para corregirlo.
       </p>
       <form class="add" @submit.prevent="agregar">
-        <input id="nueva-prenda" v-model="nueva.nombre" placeholder="Ej: Sandalias blancas, tanga negra de encaje…" aria-label="Nombre de la prenda" autocomplete="off" />
+        <input id="nueva-prenda" v-model="nueva.nombre" placeholder="Ej: Sandalias blancas, gafas de sol…" aria-label="Nombre" autocomplete="off" />
         <select id="nueva-cat" v-model="nueva.cat" aria-label="Categoría">
-          <option v-for="c in CATS" :key="c">{{ c }}</option>
+          <optgroup v-for="sec in secciones" :key="sec.titulo" :label="sec.titulo">
+            <option v-for="c in sec.cats" :key="c">{{ c }}</option>
+          </optgroup>
         </select>
         <button class="btn" type="submit">Agregar</button>
       </form>
-      <div class="group" v-for="c in CATS" :key="c">
+    </div>
+
+    <div class="panel" v-for="sec in secciones" :key="sec.titulo">
+      <h2>{{ sec.titulo }}</h2>
+      <div class="group" v-for="c in sec.cats" :key="c">
         <h3>{{ c }}</h3>
         <p v-if="CATS_SUELTAS.includes(c)" class="hint" style="margin: 0; font-size: 12px">
-          Describe cada pieza para reconocerla (color, tipo, detalle). En la Maleta de cada viaje eliges cuáles llevas.
+          Describe cada pieza para reconocerla (color, tipo, detalle).
         </p>
         <ul class="list">
           <li v-for="p in prendasDe(c)" :key="p.id" class="pr">
@@ -65,44 +58,23 @@ const borrarBase = (id) => (s.plantilla = s.plantilla.filter((b) => b.id !== id)
             <select class="cat" :id="'cat-' + p.id" v-model="p.cat" :aria-label="'Categoría de ' + p.nombre">
               <option v-for="c2 in CATS" :key="c2">{{ c2 }}</option>
             </select>
-            <button
-              v-if="viaje"
-              type="button"
-              class="llevar"
-              :class="estadoEnViaje(p.id) || 'no'"
-              :disabled="fija(p.id)"
-              :aria-pressed="!!estadoEnViaje(p.id)"
-              :title="fija(p.id) ? 'Para sacarla, quítala de la pinta' : ''"
-              @click="toggleLlevo(p.id)"
-            >{{ etiqueta(p.id) }}</button>
+            <span v-if="viaje && diasDePieza(p.id).length" class="meta">{{ diasDePieza(p.id).join(', ') }}</span>
+            <template v-if="viaje">
+              <span v-if="esPuesta(p.id)" class="llevar puesta">Puesta</span>
+              <button
+                v-else
+                type="button"
+                class="llevar"
+                :class="{ on: enMaleta(p.id) }"
+                :aria-pressed="enMaleta(p.id)"
+                @click="toggleMaleta(p.id)"
+              >{{ enMaleta(p.id) ? '✓ En la maleta' : '+ Llevar' }}</button>
+            </template>
             <button type="button" class="del" @click="delPrenda(p.id)" :aria-label="'Borrar ' + p.nombre + ' del armario'">×</button>
           </li>
           <li v-if="!prendasDe(c).length" class="empty">Vacío</li>
         </ul>
       </div>
-    </div>
-
-    <div class="panel">
-      <h2>Básicos de cada viaje</h2>
-      <p class="hint" style="margin: 0">Esta lista se copia a la maleta cada vez que creas un viaje. Los cambios aquí no tocan los viajes que ya existen.</p>
-      <form class="add" @submit.prevent="agregarBase">
-        <input id="nuevo-base" v-model="nuevoB.nombre" placeholder="Ej: Gafas de sol" aria-label="Nombre del básico" autocomplete="off" />
-        <select id="nuevo-base-grupo" v-model="nuevoB.grupo" aria-label="Grupo">
-          <option v-for="g in GRUPOS" :key="g">{{ g }}</option>
-        </select>
-        <button class="btn" type="submit">Agregar</button>
-      </form>
-      <template v-for="g in GRUPOS" :key="g">
-        <div class="group" v-if="baseDe(g).length">
-          <h3>{{ g }}</h3>
-          <ul class="list">
-            <li v-for="b in baseDe(g)" :key="b.id">
-              <input class="inline" :id="'base-' + b.id" v-model.lazy="b.nombre" :aria-label="'Nombre de ' + b.nombre" @keydown.enter="$event.target.blur()" />
-              <button type="button" class="del" @click="borrarBase(b.id)" :aria-label="'Quitar ' + b.nombre">×</button>
-            </li>
-          </ul>
-        </div>
-      </template>
     </div>
   </section>
 </template>
@@ -115,8 +87,10 @@ const borrarBase = (id) => (s.plantilla = s.plantilla.filter((b) => b.id !== id)
 .pr .inline {
   flex: 1 1 100%;
 }
-.llevar {
+.pr .meta {
   margin-left: auto;
+}
+.llevar {
   border: 1.5px solid var(--lav);
   background: transparent;
   color: var(--lav);
@@ -126,19 +100,22 @@ const borrarBase = (id) => (s.plantilla = s.plantilla.filter((b) => b.id !== id)
   font-weight: 600;
   white-space: nowrap;
 }
-.llevar.extra {
+.pr .cat + .llevar,
+.pr .cat + .meta + .llevar {
+  margin-left: auto;
+}
+.pr .meta + .llevar {
+  margin-left: 0;
+}
+.llevar.on {
   background: var(--lav);
   color: var(--on-accent);
 }
-.llevar.pinta,
 .llevar.puesta {
   border-color: transparent;
-  background: var(--lav-soft);
-  cursor: default;
+  background: var(--pink-soft);
+  color: var(--pink);
   font-weight: 500;
-  max-width: 60%;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 .inline {
   flex: 1;
@@ -166,6 +143,6 @@ const borrarBase = (id) => (s.plantilla = s.plantilla.filter((b) => b.id !== id)
   padding: 3px 6px;
   font-size: 11px;
   font-weight: 600;
-  max-width: 96px;
+  max-width: 110px;
 }
 </style>

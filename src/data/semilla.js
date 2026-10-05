@@ -1,54 +1,20 @@
-// Datos iniciales de Maletica.
-// - prendas: tu armario (se usa en todos los viajes)
-// - plantilla: básicos que se copian a cada viaje nuevo
-// - viajes: cada uno con destino, fechas, pintas por fecha y su propia maleta
+// Datos de Maletica (versión 3)
+// - prendas: TU ARMARIO, todo lo que tienes: ropa y cosas (cargadores, aseo, documentos…)
+// - viajes: destino, fechas, pintas por día y la MALETA (llevo = lo que elegiste del armario)
 
-// Categorías que se arman día por día en las pintas
-export const CATS_PINTA = ['Arriba', 'Abajo', 'Zapatos', 'Abrigo', 'Accesorios']
-// Piezas que se eligen una por una para el viaje (no por día)
+// Ropa que se usa en las pintas de cada día
+export const CATS_PINTA = ['Arriba', 'Abajo', 'Zapatos', 'Abrigo', 'Accesorios', 'Ropa interior', 'Medias']
+// Toda la ropa (la pijama no va en pintas)
+export const CATS_ROPA = [...CATS_PINTA, 'Pijama']
+// Cosas que no son ropa
+export const CATS_COSAS = ['Tecnología', 'Documentos y plata', 'Aseo y maquillaje', 'Otras cosas']
+export const CATS = [...CATS_ROPA, ...CATS_COSAS]
+// Piezas que se cuentan contra lo recomendado (días + 1)
 export const CATS_SUELTAS = ['Ropa interior', 'Medias']
-export const CATS = [...CATS_PINTA, ...CATS_SUELTAS]
-
-// Si un básico genérico ("Ropa interior", "Medias") corresponde a una categoría de piezas sueltas
-export function catDeBasico(nombre) {
-  if (/^medias/i.test(nombre)) return 'Medias'
-  if (/^ropa interior|^calzones|^cucos|^panties/i.test(nombre)) return 'Ropa interior'
-  return null
-}
-
-// Piezas de ejemplo (de la lista de julio)
-function interiorBase(sig) {
-  return [
-    ['Cuco negro de encaje', 'Ropa interior'],
-    ['Cuco negro "Only One"', 'Ropa interior'],
-    ['Cuco blanco "Secret"', 'Ropa interior'],
-    ['Medias de gato rosadas', 'Medias'],
-    ['Medias de leopardo', 'Medias'],
-    ['Medias de rayas negras/blancas', 'Medias']
-  ].map(([nombre, cat]) => ({ id: 'p' + sig(), nombre, cat }))
-}
-
-export const GRUPOS = [
-  'Ropa extra',
-  'Tecnología',
-  'Documentos y plata',
-  'Aseo y maquillaje',
-  'Ropa interior y dormir',
-  'Extras'
-]
 
 export const ACTIVIDADES = ['Viaje', 'Paseo', 'Piscina', 'Salida de noche', 'En casa', 'Trabajo', 'Regreso']
 
-// Cantidad automática según los días del viaje
-//  dias+1   → ropa interior, medias
-//  noches/4 → pijama (una cada 4 noches)
-export function reglaPorNombre(nombre) {
-  if (/^ropa interior|^calzones|^cucos|^medias/i.test(nombre)) return 'dias+1'
-  if (/pijama/i.test(nombre)) return 'noches/4'
-  return null
-}
-
-function prendasBase() {
+function armarioBase() {
   let n = 0
   const P = (nombre, cat) => ({ id: 'p' + ++n, nombre, cat })
   return [
@@ -65,127 +31,131 @@ function prendasBase() {
     P('Tenis rojos', 'Zapatos'),
     P('Buzo blanco manga campana', 'Abrigo'),
     P('Correa negra', 'Accesorios'),
-    P('Correa gris', 'Accesorios')
+    P('Correa gris', 'Accesorios'),
+    P('Cuco negro de encaje', 'Ropa interior'),
+    P('Cuco negro "Only One"', 'Ropa interior'),
+    P('Cuco blanco "Secret"', 'Ropa interior'),
+    P('Medias de gato rosadas', 'Medias'),
+    P('Medias de leopardo', 'Medias'),
+    P('Medias de rayas negras/blancas', 'Medias'),
+    P('Pijama satinada negra', 'Pijama'),
+    P('Portátil', 'Tecnología'),
+    P('Cargador del portátil', 'Tecnología'),
+    P('Mouse', 'Tecnología'),
+    P('Audífonos óseos', 'Tecnología'),
+    P('Cargador del celular', 'Tecnología'),
+    P('Cédula', 'Documentos y plata'),
+    P('Efectivo', 'Documentos y plata'),
+    P('Bloqueador', 'Aseo y maquillaje'),
+    P("Crema POND'S", 'Aseo y maquillaje'),
+    P('Base', 'Aseo y maquillaje'),
+    P('Polvo matificante', 'Aseo y maquillaje'),
+    P('2 delineadores', 'Aseo y maquillaje'),
+    P('3 pestañinas', 'Aseo y maquillaje'),
+    P('Encrespador', 'Aseo y maquillaje'),
+    P('Brillo labial', 'Aseo y maquillaje'),
+    P('Perfume Tonic Noche', 'Otras cosas'),
+    P('Bolsa con cierre para ropa mojada', 'Otras cosas')
   ]
 }
 
-export function plantillaBase() {
-  let m = 0
-  const B = (nombre, grupo) => ({ id: 'b' + ++m, nombre, grupo, regla: reglaPorNombre(nombre) })
-  return [
-    B('Portátil', 'Tecnología'),
-    B('Cargador del portátil', 'Tecnología'),
-    B('Mouse', 'Tecnología'),
-    B('Audífonos óseos', 'Tecnología'),
-    B('Cargador del celular', 'Tecnología'),
-    B('Cédula', 'Documentos y plata'),
-    B('Efectivo', 'Documentos y plata'),
-    B('Bloqueador', 'Aseo y maquillaje'),
-    B("Crema POND'S", 'Aseo y maquillaje'),
-    B('Base', 'Aseo y maquillaje'),
-    B('Polvo matificante', 'Aseo y maquillaje'),
-    B('2 delineadores', 'Aseo y maquillaje'),
-    B('3 pestañinas', 'Aseo y maquillaje'),
-    B('Encrespador', 'Aseo y maquillaje'),
-    B('Brillo labial', 'Aseo y maquillaje'),
-    B('Ropa interior', 'Ropa interior y dormir'),
-    B('Medias', 'Ropa interior y dormir'),
-    B('Pijama satinada negra', 'Ropa interior y dormir'),
-    B('Perfume Tonic Noche', 'Extras'),
-    B('Bolsa con cierre para ropa mojada', 'Extras')
-  ]
-}
-
-export function semilla() {
-  const prendas = prendasBase()
-  let n = 50
-  prendas.push(...interiorBase(() => ++n))
-  const id = (nombre) => prendas.find((p) => p.nombre === nombre).id
-  const viaje = ['Jean de brillitos', 'Esqueleto negro', 'Buzo blanco manga campana', 'Tenis rojos'].map(id)
-  const plantilla = plantillaBase()
-
+export function viajeNuevo(id, destino, ida, vuelta) {
   return {
-    version: 2,
-    interiorAgregado: true,
-    prendas,
-    plantilla,
-    viajes: [
-      {
-        id: 'v1',
-        destino: 'Villavicencio',
-        ida: '2026-10-05',
-        vuelta: '2026-10-09',
-        pintas: {
-          '2026-10-05': viaje,
-          '2026-10-06': ['Short de jean azul', 'Esqueleto de rombos gris/blanco', 'Tenis rojos', 'Correa negra'].map(id),
-          '2026-10-07': ['Falda-short negra', 'Blusa negra de perlas', 'Tenis rojos'].map(id),
-          '2026-10-08': ['Falda-short gris', 'Blusa café/beige con brillitos', 'Tenis rojos', 'Correa gris'].map(id),
-          '2026-10-09': [...viaje]
-        },
-        basicos: JSON.parse(JSON.stringify(plantilla)),
-        llevo: [],
-        info: { '2026-10-05': { actividad: 'Viaje' }, '2026-10-09': { actividad: 'Regreso' } },
-        checks: { ida: {}, vuelta: {} },
-        fase: 'ida'
-      }
-    ],
-    seq: 100
+    id,
+    destino,
+    ida,
+    vuelta,
+    pintas: {},
+    llevo: [],
+    info: { [ida]: { actividad: 'Viaje' }, ...(vuelta !== ida ? { [vuelta]: { actividad: 'Regreso' } } : {}) },
+    checks: { ida: {}, vuelta: {} },
+    fase: 'ida'
   }
 }
 
-// Convierte los datos de la primera versión (un solo viaje fijo) al formato nuevo
-export function migrarV1(old) {
+export function semilla() {
+  const prendas = armarioBase()
+  const id = (nombre) => prendas.find((p) => p.nombre === nombre).id
+  const viaje = ['Jean de brillitos', 'Esqueleto negro', 'Buzo blanco manga campana', 'Tenis rojos'].map(id)
+  const v = viajeNuevo('v1', 'Villavicencio', '2026-10-05', '2026-10-09')
+  v.pintas = {
+    '2026-10-05': viaje,
+    '2026-10-06': ['Short de jean azul', 'Esqueleto de rombos gris/blanco', 'Tenis rojos', 'Correa negra'].map(id),
+    '2026-10-07': ['Falda-short negra', 'Blusa negra de perlas', 'Tenis rojos'].map(id),
+    '2026-10-08': ['Falda-short gris', 'Blusa café/beige con brillitos', 'Tenis rojos', 'Correa gris'].map(id),
+    '2026-10-09': [...viaje]
+  }
+  return { version: 3, prendas, viajes: [v], seq: 100 }
+}
+
+// ---------- Migraciones ----------
+const GRUPO_A_CAT = {
+  Tecnología: 'Tecnología',
+  'Documentos y plata': 'Documentos y plata',
+  'Aseo y maquillaje': 'Aseo y maquillaje',
+  Extras: 'Otras cosas',
+  'Ropa extra': 'Otras cosas'
+}
+const esGenerico = (n) => /^(ropa interior|medias|calzones|cucos|panties)\b/i.test(n)
+
+// v2 → v3: los básicos pasan al armario como cosas y la maleta queda vacía para armarla
+function migrarV2(d) {
+  const prendas = [...(d.prendas || [])]
+  let seq = Math.max(d.seq || 100, 100)
+  const nombres = new Set(prendas.map((p) => p.nombre.toLowerCase()))
+  const basicos = [...(d.plantilla || []), ...(d.viajes || []).flatMap((v) => v.basicos || [])]
+  basicos.forEach((b) => {
+    if (!b || !b.nombre || esGenerico(b.nombre) || nombres.has(b.nombre.toLowerCase())) return
+    const cat = /pijama/i.test(b.nombre) ? 'Pijama' : GRUPO_A_CAT[b.grupo] || 'Otras cosas'
+    prendas.push({ id: 'p' + ++seq, nombre: b.nombre, cat })
+    nombres.add(b.nombre.toLowerCase())
+  })
+  const viajes = (d.viajes || []).map((v) => ({
+    id: v.id,
+    destino: v.destino,
+    ida: v.ida,
+    vuelta: v.vuelta,
+    pintas: v.pintas || {},
+    llevo: [],
+    info: v.info || {},
+    checks: { ida: {}, vuelta: {} },
+    fase: 'ida'
+  }))
+  return { version: 3, prendas, viajes, seq }
+}
+
+// v1 (un solo viaje fijo) → v2 simplificado → v3
+function migrarV1(old) {
   const fechas = ['2026-10-05', '2026-10-06', '2026-10-07', '2026-10-08', '2026-10-09']
   const pintas = {}
   fechas.forEach((f, i) => {
     if (old.pintas && old.pintas['d' + i]) pintas[f] = old.pintas['d' + i]
   })
-  return {
-    version: 2,
+  return migrarV2({
     prendas: old.prendas || [],
-    plantilla: JSON.parse(JSON.stringify(old.basicos || plantillaBase())),
-    viajes: [
-      {
-        id: 'v1',
-        destino: 'Villavicencio',
-        ida: '2026-10-05',
-        vuelta: old.regreso === 'jue' ? '2026-10-08' : '2026-10-09',
-        pintas,
-        basicos: old.basicos || plantillaBase(),
-        info: { '2026-10-05': { actividad: 'Viaje' } },
-        checks: old.checks || { ida: {}, vuelta: {} },
-        fase: old.fase || 'ida'
-      }
-    ],
-    seq: Math.max(old.seq || 100, 100)
-  }
+    plantilla: old.basicos || [],
+    viajes: [{ id: 'v1', destino: 'Villavicencio', ida: '2026-10-05', vuelta: old.regreso === 'jue' ? '2026-10-08' : '2026-10-09', pintas }],
+    seq: old.seq
+  })
 }
 
-// Completa campos que versiones anteriores no tenían
 function completar(d) {
-  const conRegla = (b) => (b.regla === undefined ? { ...b, regla: reglaPorNombre(b.nombre) } : b)
-  d.plantilla = (d.plantilla || []).map(conRegla)
-  d.viajes.forEach((v) => {
-    v.basicos = (v.basicos || []).map(conRegla)
-    if (!v.info) v.info = {}
-    if (!v.llevo) v.llevo = []
-    if (!v.checks) v.checks = { ida: {}, vuelta: {} }
-    if (!v.fase) v.fase = 'ida'
-  })
-  // Una sola vez: agrega las piezas de ropa interior y medias de ejemplo
-  if (!d.interiorAgregado) {
-    if (!d.prendas.some((p) => CATS_SUELTAS.includes(p.cat))) {
-      d.seq = Math.max(d.seq || 100, 100)
-      d.prendas.push(...interiorBase(() => ++d.seq))
-    }
-    d.interiorAgregado = true
-  }
+  d.prendas = (d.prendas || []).filter((p) => p && p.id)
+  d.viajes = (d.viajes || []).map((v) => ({
+    pintas: {},
+    llevo: [],
+    info: {},
+    checks: { ida: {}, vuelta: {} },
+    fase: 'ida',
+    ...v
+  }))
   return d
 }
 
 export function normalizar(data) {
   if (!data || typeof data !== 'object') return semilla()
-  if (data.version === 2 && Array.isArray(data.viajes)) return completar(data)
+  if (data.version === 3 && Array.isArray(data.viajes)) return completar(data)
+  if (data.version === 2 && Array.isArray(data.viajes)) return completar(migrarV2(data))
   if (data.prendas && data.pintas) return completar(migrarV1(data))
   return semilla()
 }

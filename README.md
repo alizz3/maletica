@@ -1,11 +1,12 @@
 # Maletica
 
-Planea la pinta de cada día del viaje y la maleta se arma sola: lo que no aparece en ninguna pinta, no viaja.
+Tu armario, tu maleta y tus pintas conectados, para no llevar de más ni dejar nada.
 
-- **Pintas:** eliges la ropa de cada día; el número en cada prenda dice cuántos días la usas.
-- **Maleta:** checklist automático (ropa de las pintas + básicos), agregar y quitar cosas, modo *Empacar* y modo *Regreso*.
-- **Armario:** tus prendas, para reusarlas en cada viaje.
-- Modo claro/oscuro, login con Google y guardado en la nube.
+- **Armario:** todo lo que tienes, ropa y cosas (cargadores, aseo, documentos…).
+- **Maleta:** empieza vacía. Eliges del armario lo que llevas y lo chuleas al empacar.
+- **Pintas:** lo que te pones cada día. Si pones una prenda en un día, también entra a la maleta.
+- **Checklist de regreso:** todo lo que viajó (maleta + lo que llevabas puesto) para que no se quede nada, más una revisión del lugar antes de salir.
+- Varios viajes, modo claro/oscuro, login con Google y guardado en la nube.
 
 Hecho con Vue 3 + Vite, Firebase (Auth + Firestore) y Vercel.
 
