@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://maletica.vercel.app/sitemap.xml
