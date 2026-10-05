@@ -12,7 +12,7 @@ import RegresoView from './RegresoView.vue'
 const pesadas = ['Abajo', 'Zapatos', 'Abrigo'] // ocupan espacio: avisar si solo se usan un día
 const aviso = ref('')
 const soloPendientes = ref(false)
-const nuevo = reactive({ nombre: '', grupo: 'Ropa extra' })
+const nuevo = reactive({ nombre: '', grupo: 'Arriba' })
 let deshacer = null
 let timer
 
@@ -29,7 +29,12 @@ function avisar(t, undo = null) {
 function agregar() {
   const n = nuevo.nombre.trim()
   if (!n) return
-  addBasico(n, nuevo.grupo)
+  if (CATS.includes(nuevo.grupo)) {
+    // Ropa: queda en el armario y en la maleta de este viaje
+    toggleLlevo(addPrenda(n, nuevo.grupo))
+  } else {
+    addBasico(n, nuevo.grupo)
+  }
   avisar(n + ' agregado a ' + nuevo.grupo)
   nuevo.nombre = ''
 }
@@ -37,8 +42,12 @@ function agregar() {
 function quitarRopa(p) {
   const v = viaje.value
   const copia = JSON.parse(JSON.stringify(v.pintas))
+  const copiaLlevo = [...(v.llevo || [])]
   sacarDeMaleta(p.id)
-  avisar(p.nombre + ' quedó fuera de la maleta y de las pintas', () => (v.pintas = copia))
+  avisar(p.nombre + ' quedó fuera de la maleta', () => {
+    v.pintas = copia
+    v.llevo = copiaLlevo
+  })
 }
 
 function quitarBasico(b) {
@@ -127,7 +136,12 @@ const iconoAviso = { falta: '!', sobra: '↩', exceso: '⇣', bien: '✓' }
       <div class="add">
         <input id="nuevo-item" v-model="nuevo.nombre" placeholder="Ej: Sandalias, gafas de sol…" autocomplete="off" />
         <select id="nuevo-grupo" v-model="nuevo.grupo" aria-label="Grupo">
-          <option v-for="g in GRUPOS" :key="g">{{ g }}</option>
+          <optgroup label="Ropa (también queda en tu armario)">
+            <option v-for="cat in CATS" :key="cat">{{ cat }}</option>
+          </optgroup>
+          <optgroup label="Otras cosas">
+            <option v-for="g in GRUPOS.filter((x) => x !== 'Ropa extra')" :key="g">{{ g }}</option>
+          </optgroup>
         </select>
         <button class="btn" type="submit">Agregar</button>
       </div>
@@ -140,7 +154,7 @@ const iconoAviso = { falta: '!', sobra: '↩', exceso: '⇣', bien: '✓' }
 
     <div class="panel">
       <div class="ph">
-        <h3>Ropa de las pintas</h3>
+        <h3>Ropa</h3>
         <span class="gp" v-if="progRopa.total">{{ progRopa.listos }}/{{ progRopa.total }}</span>
       </div>
       <template v-for="g in ropaPorCat" :key="g.cat">
@@ -151,13 +165,14 @@ const iconoAviso = { falta: '!', sobra: '↩', exceso: '⇣', bien: '✓' }
               <input type="checkbox" :id="'chk-p-' + p.id" :checked="chk('p:' + p.id)" @change="setChk('p:' + p.id, $event.target.checked)" />
               <span :class="{ done: chk('p:' + p.id) }">{{ p.nombre }}</span>
             </label>
-            <span v-if="usos[p.id] > 1" class="meta good">{{ usos[p.id] }} días</span>
+            <span v-if="!usos[p.id]" class="meta" title="La marcaste para llevar, pero no está en ninguna pinta">extra</span>
+            <span v-else-if="usos[p.id] > 1" class="meta good">{{ usos[p.id] }} días</span>
             <span v-else-if="pesadas.includes(p.cat)" class="meta warn" title="Es de las que ocupan espacio. ¿La cambias por algo que ya llevas?">solo 1 vez</span>
             <button type="button" class="del" @click="quitarRopa(p)" :aria-label="'Quitar ' + p.nombre + ' de la maleta'">×</button>
           </li>
         </ul>
       </template>
-      <p v-if="!ropaMaleta.length" class="empty" style="margin: 0">Arma las pintas y aquí aparece la ropa.</p>
+      <p v-if="!ropaMaleta.length" class="empty" style="margin: 0">Arma las pintas o toca "+ Llevar" en el Armario y aquí aparece la ropa.</p>
       <p v-else-if="soloPendientes && progRopa.listos === progRopa.total" class="empty" style="margin: 0">Toda la ropa está empacada.</p>
     </div>
 

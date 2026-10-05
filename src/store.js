@@ -175,10 +175,27 @@ export const ropaPintas = computed(() => {
   )
   return s.prendas.filter((p) => set.has(p.id))
 })
-// Ropa de pintas sin ropa interior ni medias (esas tienen su propia sección)
-export const ropaMaleta = computed(() => ropaPintas.value.filter((p) => CATS_PINTA.includes(p.cat)))
+// Ropa para la maleta: la de las pintas + la que marcaste "Llevar" en el armario
+// (sin ropa interior ni medias, que tienen su propia sección, y sin lo puesto el día de ida)
+export const ropaMaleta = computed(() => {
+  if (!viaje.value) return []
+  const puestoIds = new Set(puesto.value.map((p) => p.id))
+  const ids = new Set([...ropaPintas.value.map((p) => p.id), ...(viaje.value.llevo || [])])
+  return s.prendas.filter((p) => CATS_PINTA.includes(p.cat) && ids.has(p.id) && !puestoIds.has(p.id))
+})
 
-export const seQueda = computed(() => s.prendas.filter((p) => CATS_PINTA.includes(p.cat) && !usos.value[p.id]))
+export const seQueda = computed(() =>
+  s.prendas.filter((p) => CATS_PINTA.includes(p.cat) && !usos.value[p.id] && !(viaje.value?.llevo || []).includes(p.id))
+)
+
+// Estado de una prenda en este viaje: 'puesta' | 'pinta' | 'extra' | null
+export function estadoEnViaje(id) {
+  if (!viaje.value) return null
+  if (puesto.value.some((p) => p.id === id)) return 'puesta'
+  if (diasDePieza(id).length) return 'pinta'
+  if ((viaje.value.llevo || []).includes(id)) return 'extra'
+  return null
+}
 
 export function togglePrenda(fecha, id) {
   const v = viaje.value
@@ -209,6 +226,7 @@ export function delPrenda(id) {
 // Quitar de la maleta = sacarla de las pintas desde el segundo día
 export function sacarDeMaleta(id) {
   const v = viaje.value
+  if (v.llevo) v.llevo = v.llevo.filter((x) => x !== id)
   const primer = dias.value[0] && dias.value[0].key
   Object.keys(v.pintas).forEach((k) => {
     if (k !== primer) v.pintas[k] = v.pintas[k].filter((x) => x !== id)
