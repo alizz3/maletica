@@ -1,5 +1,7 @@
-// Datos iniciales: viaje a Villavicencio (lun 5 – vie 9 oct 2026)
-// y la lista base de julio. Todo se puede editar desde la app.
+// Datos iniciales de Maletica.
+// - prendas: tu armario (se usa en todos los viajes)
+// - plantilla: básicos que se copian a cada viaje nuevo
+// - viajes: cada uno con destino, fechas, pintas por fecha y su propia maleta
 
 export const CATS = ['Arriba', 'Abajo', 'Zapatos', 'Abrigo', 'Accesorios']
 
@@ -12,18 +14,10 @@ export const GRUPOS = [
   'Extras'
 ]
 
-export const DIAS = [
-  { key: 'd0', corto: 'Lun', num: 5, largo: 'Lunes 5' },
-  { key: 'd1', corto: 'Mar', num: 6, largo: 'Martes 6' },
-  { key: 'd2', corto: 'Mié', num: 7, largo: 'Miércoles 7' },
-  { key: 'd3', corto: 'Jue', num: 8, largo: 'Jueves 8' },
-  { key: 'd4', corto: 'Vie', num: 9, largo: 'Viernes 9' }
-]
-
-export function semilla() {
+function prendasBase() {
   let n = 0
   const P = (nombre, cat) => ({ id: 'p' + ++n, nombre, cat })
-  const prendas = [
+  return [
     P('Esqueleto negro', 'Arriba'),
     P('Esqueleto de rombos gris/blanco', 'Arriba'),
     P('Blusa negra de perlas', 'Arriba'),
@@ -39,20 +33,12 @@ export function semilla() {
     P('Correa negra', 'Accesorios'),
     P('Correa gris', 'Accesorios')
   ]
-  const id = (nombre) => prendas.find((p) => p.nombre === nombre).id
-  const viaje = ['Jean de brillitos', 'Esqueleto negro', 'Buzo blanco manga campana', 'Tenis rojos'].map(id)
+}
 
-  const pintas = {
-    d0: viaje,
-    d1: ['Short de jean azul', 'Esqueleto de rombos gris/blanco', 'Tenis rojos', 'Correa negra'].map(id),
-    d2: ['Falda-short negra', 'Blusa negra de perlas', 'Tenis rojos'].map(id),
-    d3: ['Falda-short gris', 'Blusa café/beige con brillitos', 'Tenis rojos', 'Correa gris'].map(id),
-    d4: [...viaje]
-  }
-
+export function plantillaBase() {
   let m = 0
   const B = (nombre, grupo) => ({ id: 'b' + ++m, nombre, grupo })
-  const basicos = [
+  return [
     B('Portátil', 'Tecnología'),
     B('Cargador del portátil', 'Tecnología'),
     B('Mouse', 'Tecnología'),
@@ -68,20 +54,76 @@ export function semilla() {
     B('3 pestañinas', 'Aseo y maquillaje'),
     B('Encrespador', 'Aseo y maquillaje'),
     B('Brillo labial', 'Aseo y maquillaje'),
-    B('Ropa interior (4 mudas)', 'Ropa interior y dormir'),
-    B('Medias (3 pares)', 'Ropa interior y dormir'),
+    B('Ropa interior', 'Ropa interior y dormir'),
+    B('Medias', 'Ropa interior y dormir'),
     B('Pijama satinada negra', 'Ropa interior y dormir'),
     B('Perfume Tonic Noche', 'Extras'),
     B('Bolsa con cierre para ropa mojada', 'Extras')
   ]
+}
+
+export function semilla() {
+  const prendas = prendasBase()
+  const id = (nombre) => prendas.find((p) => p.nombre === nombre).id
+  const viaje = ['Jean de brillitos', 'Esqueleto negro', 'Buzo blanco manga campana', 'Tenis rojos'].map(id)
+  const plantilla = plantillaBase()
 
   return {
-    regreso: 'vie',
-    fase: 'ida',
+    version: 2,
     prendas,
-    pintas,
-    basicos,
-    checks: { ida: {}, vuelta: {} },
+    plantilla,
+    viajes: [
+      {
+        id: 'v1',
+        destino: 'Villavicencio',
+        ida: '2026-10-05',
+        vuelta: '2026-10-09',
+        pintas: {
+          '2026-10-05': viaje,
+          '2026-10-06': ['Short de jean azul', 'Esqueleto de rombos gris/blanco', 'Tenis rojos', 'Correa negra'].map(id),
+          '2026-10-07': ['Falda-short negra', 'Blusa negra de perlas', 'Tenis rojos'].map(id),
+          '2026-10-08': ['Falda-short gris', 'Blusa café/beige con brillitos', 'Tenis rojos', 'Correa gris'].map(id),
+          '2026-10-09': [...viaje]
+        },
+        basicos: JSON.parse(JSON.stringify(plantilla)),
+        checks: { ida: {}, vuelta: {} },
+        fase: 'ida'
+      }
+    ],
     seq: 100
   }
+}
+
+// Convierte los datos de la primera versión (un solo viaje fijo) al formato nuevo
+export function migrarV1(old) {
+  const fechas = ['2026-10-05', '2026-10-06', '2026-10-07', '2026-10-08', '2026-10-09']
+  const pintas = {}
+  fechas.forEach((f, i) => {
+    if (old.pintas && old.pintas['d' + i]) pintas[f] = old.pintas['d' + i]
+  })
+  return {
+    version: 2,
+    prendas: old.prendas || [],
+    plantilla: JSON.parse(JSON.stringify(old.basicos || plantillaBase())),
+    viajes: [
+      {
+        id: 'v1',
+        destino: 'Villavicencio',
+        ida: '2026-10-05',
+        vuelta: old.regreso === 'jue' ? '2026-10-08' : '2026-10-09',
+        pintas,
+        basicos: old.basicos || plantillaBase(),
+        checks: old.checks || { ida: {}, vuelta: {} },
+        fase: old.fase || 'ida'
+      }
+    ],
+    seq: Math.max(old.seq || 100, 100)
+  }
+}
+
+export function normalizar(data) {
+  if (!data || typeof data !== 'object') return semilla()
+  if (data.version === 2 && Array.isArray(data.viajes)) return data
+  if (data.prendas && data.pintas) return migrarV1(data)
+  return semilla()
 }

@@ -128,3 +128,9 @@ main{display:flex;flex-direction:column}
 .foot a{color:var(--muted)}
 .link{border:0;background:none;color:var(--lav);font-weight:600;text-decoration:underline;padding:0 4px}
 .toast{margin:0}
+
+/* Pantalla de carga */
+.splash{min-height:60vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px}
+.brand-big{font-family:var(--f-hand);font-size:44px;color:var(--pink);line-height:1}
+@media (prefers-reduced-motion:no-preference){.brand-big{animation:latido 1.4s ease-in-out infinite}}
+@keyframes latido{50%{transform:translateY(-4px)}}

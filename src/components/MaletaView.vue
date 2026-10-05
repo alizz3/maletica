@@ -1,7 +1,7 @@
 <script setup>
 import { ref, reactive } from 'vue'
 import {
-  s, dias, GRUPOS, ropaMaleta, puesto, seQueda, usos, basicosDe,
+  viaje, dias, GRUPOS, ropaMaleta, puesto, seQueda, usos, basicosDe,
   total, hechos, pct, chk, setChk, addBasico, delBasico, sacarDeMaleta, textoLista
 } from '../store.js'
 
@@ -30,15 +30,17 @@ function agregar() {
 }
 
 function quitarRopa(p) {
-  const copia = JSON.parse(JSON.stringify(s.pintas))
+  const v = viaje.value
+  const copia = JSON.parse(JSON.stringify(v.pintas))
   sacarDeMaleta(p.id)
-  avisar(p.nombre + ' quedó fuera de la maleta y de las pintas', () => (s.pintas = copia))
+  avisar(p.nombre + ' quedó fuera de la maleta y de las pintas', () => (v.pintas = copia))
 }
 
 function quitarBasico(b) {
-  const copia = JSON.parse(JSON.stringify(s.basicos))
+  const v = viaje.value
+  const copia = JSON.parse(JSON.stringify(v.basicos))
   delBasico(b.id)
-  avisar(b.nombre + ' quitado', () => (s.basicos = copia))
+  avisar(b.nombre + ' quitado', () => (v.basicos = copia))
 }
 
 function undo() {
@@ -62,15 +64,15 @@ async function copiar() {
     <h2 id="t-maleta" class="sr-only">Maleta</h2>
     <div class="row" style="justify-content: space-between">
       <div class="seg" role="group" aria-label="Fase">
-        <button type="button" :class="{ on: s.fase === 'ida' }" @click="s.fase = 'ida'">Empacar (ida)</button>
-        <button type="button" :class="{ on: s.fase === 'vuelta' }" @click="s.fase = 'vuelta'">Regreso</button>
+        <button type="button" :class="{ on: viaje.fase === 'ida' }" @click="viaje.fase = 'ida'">Empacar (ida)</button>
+        <button type="button" :class="{ on: viaje.fase === 'vuelta' }" @click="viaje.fase = 'vuelta'">Regreso</button>
       </div>
       <button type="button" class="btn ghost" @click="copiar">Copiar lista</button>
     </div>
 
     <div class="progress">
       <div class="bar" role="progressbar" :aria-valuenow="pct" aria-valuemin="0" aria-valuemax="100"><i :style="{ width: pct + '%' }"></i></div>
-      <span class="count">{{ hechos }} de {{ total }} {{ s.fase === 'ida' ? 'en la maleta' : 'recogidas para volver' }}</span>
+      <span class="count">{{ hechos }} de {{ total }} {{ viaje.fase === 'ida' ? 'en la maleta' : 'recogidas para volver' }}</span>
     </div>
 
     <form class="add-maleta" @submit.prevent="agregar">
@@ -121,7 +123,7 @@ async function copiar() {
     </template>
 
     <div class="panel">
-      <h3>Lo llevas puesto el {{ dias[0].largo.toLowerCase() }}</h3>
+      <h3>Lo llevas puesto el {{ dias[0] ? dias[0].largo.toLowerCase() : 'día de ida' }}</h3>
       <p style="margin: 0; font-size: 14px">{{ puesto.map((p) => p.nombre).join(' · ') || 'Sin definir' }}</p>
     </div>
 
