@@ -7,6 +7,7 @@ import {
   CATS_SUELTAS, prendasDe, llevoDe, llevaPieza, toggleLlevo, recomendado, addPrenda,
   piezasPuestas, diasDePieza, esDeRepuesto
 } from '../store.js'
+import RegresoView from './RegresoView.vue'
 
 const pesadas = ['Abajo', 'Zapatos', 'Abrigo'] // ocupan espacio: avisar si solo se usan un día
 const aviso = ref('')
@@ -91,7 +92,7 @@ const iconoAviso = { falta: '!', sobra: '↩', exceso: '⇣', bien: '✓' }
     <div class="row" style="justify-content: space-between">
       <div class="seg" role="group" aria-label="Fase">
         <button type="button" :class="{ on: viaje.fase === 'ida' }" @click="viaje.fase = 'ida'">Empacar (ida)</button>
-        <button type="button" :class="{ on: viaje.fase === 'vuelta' }" @click="viaje.fase = 'vuelta'">Regreso</button>
+        <button type="button" :class="{ on: viaje.fase === 'vuelta' }" @click="viaje.fase = 'vuelta'">Checklist de regreso</button>
       </div>
       <button type="button" class="btn ghost" @click="copiar">Copiar lista</button>
     </div>
@@ -100,8 +101,8 @@ const iconoAviso = { falta: '!', sobra: '↩', exceso: '⇣', bien: '✓' }
       <div class="bar" role="progressbar" :aria-valuenow="pct" aria-valuemin="0" aria-valuemax="100"><i :style="{ width: pct + '%' }"></i></div>
       <div class="row" style="justify-content: space-between">
         <span class="count">
-          <template v-if="faltan === 0 && total">¡Maleta lista! Todo empacado.</template>
-          <template v-else>{{ hechos }} de {{ total }} {{ viaje.fase === 'ida' ? 'en la maleta' : 'recogidas para volver' }} · faltan {{ faltan }}</template>
+          <template v-if="faltan === 0 && total">{{ viaje.fase === 'ida' ? '¡Maleta lista! Todo empacado.' : '¡Todo listo para volver! No se queda nada.' }}</template>
+          <template v-else>{{ hechos }} de {{ total }} {{ viaje.fase === 'ida' ? 'en la maleta' : 'listas para volver' }} · faltan {{ faltan }}</template>
         </span>
         <label class="toggle" for="solo-pend">
           <input id="solo-pend" type="checkbox" v-model="soloPendientes" />
@@ -110,6 +111,9 @@ const iconoAviso = { falta: '!', sobra: '↩', exceso: '⇣', bien: '✓' }
       </div>
     </div>
 
+    <RegresoView v-if="viaje.fase === 'vuelta'" :solo-pendientes="soloPendientes" />
+
+    <template v-else>
     <ul v-if="avisos.length && viaje.fase === 'ida'" class="avisos" aria-label="Para revisar">
       <li v-for="(a, i) in avisos" :key="i" :class="a.tipo">
         <span class="ico" aria-hidden="true">{{ iconoAviso[a.tipo] }}</span>
@@ -243,6 +247,7 @@ const iconoAviso = { falta: '!', sobra: '↩', exceso: '⇣', bien: '✓' }
       <h3>Se queda en casa</h3>
       <p style="margin: 0; font-size: 14px; color: var(--muted)">{{ seQueda.map((p) => p.nombre).join(' · ') }}</p>
     </div>
+    </template>
   </section>
 </template>
 

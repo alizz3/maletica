@@ -241,16 +241,50 @@ export function delBasico(id) {
   viaje.value.basicos = viaje.value.basicos.filter((b) => b.id !== id)
 }
 
+// ---------- Regreso ----------
+// Revisiones antes de salir del lugar donde te quedaste
+export const REVISAR = [
+  'Cargadores conectados en la pared',
+  'Baño: cepillo, cremas y maquillaje',
+  'Debajo de la cama y detrás de la puerta',
+  'Ropa colgada o en el tendedero',
+  'Cajones y clóset',
+  'Mesa de noche (audífonos, gafas, celular)',
+  'Nevera, si guardaste algo',
+  'Cédula, plata y llaves a la mano'
+]
+
+// Lo que te pones el día que vuelves
+export const ropaParaVolver = computed(() => {
+  const ult = dias.value[dias.value.length - 1]
+  return ult && dias.value.length > 1 ? pintaDe(ult.key) : []
+})
+
+// Todo lo que viajó (lo puesto en la ida + la maleta) menos lo que te pones para volver
+export const ropaRegreso = computed(() => {
+  if (!viaje.value) return []
+  const puesta = new Set(ropaParaVolver.value.map((p) => p.id))
+  const ids = new Set([
+    ...puesto.value.map((p) => p.id),
+    ...ropaPintas.value.map((p) => p.id),
+    ...(viaje.value.llevo || [])
+  ])
+  return s.prendas.filter((p) => ids.has(p.id) && !puesta.has(p.id))
+})
+
 // ---------- Checks ----------
-const keys = computed(() =>
-  viaje.value
-    ? [
-        ...ropaMaleta.value.map((p) => 'p:' + p.id),
-        ...CATS_SUELTAS.flatMap((cat) => piezasMaleta(cat)).map((p) => 'p:' + p.id),
-        ...viaje.value.basicos.filter((b) => !reemplazado(b, viaje.value)).map((b) => 'b:' + b.id)
-      ]
-    : []
-)
+const keys = computed(() => {
+  const v = viaje.value
+  if (!v) return []
+  const basicos = v.basicos.filter((b) => !reemplazado(b, v)).map((b) => 'b:' + b.id)
+  if (v.fase === 'vuelta')
+    return [...ropaRegreso.value.map((p) => 'p:' + p.id), ...basicos, ...REVISAR.map((_, i) => 'r:' + i)]
+  return [
+    ...ropaMaleta.value.map((p) => 'p:' + p.id),
+    ...CATS_SUELTAS.flatMap((cat) => piezasMaleta(cat)).map((p) => 'p:' + p.id),
+    ...basicos
+  ]
+})
 export const total = computed(() => keys.value.length)
 export const hechos = computed(() => (viaje.value ? keys.value.filter((k) => viaje.value.checks[viaje.value.fase][k]).length : 0))
 export const pct = computed(() => (total.value ? Math.round((hechos.value / total.value) * 100) : 0))
