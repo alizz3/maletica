@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, watch, nextTick } from 'vue'
-import { viaje, dias, CATS_PINTA as CATS, ACTIVIDADES, pintaDe, prendasDe, usos, togglePrenda, addPrenda, infoDia, setInfo } from '../store.js'
+import { viaje, dias, CATS, ACTIVIDADES, pintaDe, prendasDe, usos, togglePrenda, addPrenda, infoDia, setInfo } from '../store.js'
 
 const diaSel = ref(0)
 watch(dias, (d) => {

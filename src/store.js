@@ -110,7 +110,8 @@ export function resumenViaje(v) {
   const puestoIds = new Set((ds[0] && v.pintas[ds[0].key]) || [])
   const ropa = new Set()
   ds.slice(1).forEach((d) => (v.pintas[d.key] || []).forEach((id) => !puestoIds.has(id) && ropa.add(id)))
-  const ks = [...[...ropa].map((id) => 'p:' + id), ...(v.llevo || []).map((id) => 'p:' + id), ...v.basicos.filter((b) => !reemplazado(b, v)).map((b) => 'b:' + b.id)]
+  ;(v.llevo || []).forEach((id) => !puestoIds.has(id) && ropa.add(id))
+  const ks = [...[...ropa].map((id) => 'p:' + id), ...v.basicos.filter((b) => !reemplazado(b, v)).map((b) => 'b:' + b.id)]
   const listos = ks.filter((k) => v.checks.ida[k]).length
   const conPinta = ds.filter((d) => (v.pintas[d.key] || []).length).length
   return { dias: ds.length, conPinta, listos, total: ks.length }
@@ -126,11 +127,24 @@ export const basicosDe = (g) => (viaje.value ? viaje.value.basicos.filter((b) =>
 // El básico genérico "Ropa interior" / "Medias" se oculta cuando ya elegiste piezas concretas
 function reemplazado(b, v) {
   const cat = b.regla === 'dias+1' ? catDeBasico(b.nombre) : null
-  return !!cat && (v.llevo || []).some((id) => s.prendas.find((p) => p.id === id && p.cat === cat))
+  if (!cat) return false
+  const ids = [...(v.llevo || []), ...Object.values(v.pintas).flat()]
+  return ids.some((id) => s.prendas.find((p) => p.id === id && p.cat === cat))
 }
-export const llevoDe = (cat) => (viaje.value ? (viaje.value.llevo || []).map(byIdS).filter((p) => p && p.cat === cat) : [])
-const byIdS = (id) => s.prendas.find((p) => p.id === id)
-export const llevaPieza = (id) => !!viaje.value && (viaje.value.llevo || []).includes(id)
+// Piezas que van en la maleta: las de las pintas (sin lo puesto) + las de repuesto
+export const piezasMaleta = (cat) => {
+  if (!viaje.value) return []
+  const puestoIds = new Set(puesto.value.map((p) => p.id))
+  const ids = new Set([...ropaPintas.value.map((p) => p.id), ...(viaje.value.llevo || [])])
+  return s.prendas.filter((p) => p.cat === cat && ids.has(p.id) && !puestoIds.has(p.id))
+}
+export const piezasPuestas = (cat) => puesto.value.filter((p) => p.cat === cat)
+export const llevoDe = (cat) => piezasMaleta(cat)
+export const esDeRepuesto = (id) => !!viaje.value && (viaje.value.llevo || []).includes(id)
+// Días (sin contar la ida) en que una pieza está en la pinta
+export const diasDePieza = (id) =>
+  dias.value.slice(1).filter((d) => (viaje.value.pintas[d.key] || []).includes(id)).map((d) => d.corto + ' ' + d.num)
+export const llevaPieza = (id) => esDeRepuesto(id) || diasDePieza(id).length > 0
 export function toggleLlevo(id) {
   const v = viaje.value
   if (!v.llevo) v.llevo = []
@@ -149,7 +163,8 @@ export const usos = computed(() => {
 // Lo que llevas puesto el día de ida no se empaca
 export const puesto = computed(() => (dias.value[0] ? pintaDe(dias.value[0].key) : []))
 
-export const ropaMaleta = computed(() => {
+// Toda la ropa de las pintas que hay que empacar (lo puesto el día de ida no se empaca)
+export const ropaPintas = computed(() => {
   if (!viaje.value || !dias.value.length) return []
   const puestoIds = new Set(viaje.value.pintas[dias.value[0].key] || [])
   const set = new Set()
@@ -160,6 +175,8 @@ export const ropaMaleta = computed(() => {
   )
   return s.prendas.filter((p) => set.has(p.id))
 })
+// Ropa de pintas sin ropa interior ni medias (esas tienen su propia sección)
+export const ropaMaleta = computed(() => ropaPintas.value.filter((p) => CATS_PINTA.includes(p.cat)))
 
 export const seQueda = computed(() => s.prendas.filter((p) => CATS_PINTA.includes(p.cat) && !usos.value[p.id]))
 
@@ -229,7 +246,7 @@ const keys = computed(() =>
   viaje.value
     ? [
         ...ropaMaleta.value.map((p) => 'p:' + p.id),
-        ...(viaje.value.llevo || []).map((id) => 'p:' + id),
+        ...CATS_SUELTAS.flatMap((cat) => piezasMaleta(cat)).map((p) => 'p:' + p.id),
         ...viaje.value.basicos.filter((b) => !reemplazado(b, viaje.value)).map((b) => 'b:' + b.id)
       ]
     : []
@@ -267,7 +284,7 @@ export const avisos = computed(() => {
     out.push({ tipo: 'falta', texto: 'Falta la pinta de ' + sinPinta.map((d) => d.corto + ' ' + d.num).join(', ') + '.' })
 
   // Empacaste algo que ya no está en ninguna pinta (cambiaste un outfit)
-  const enUso = new Set([...ropaMaleta.value.map((p) => p.id), ...puesto.value.map((p) => p.id), ...(v.llevo || [])])
+  const enUso = new Set([...ropaPintas.value.map((p) => p.id), ...puesto.value.map((p) => p.id), ...(v.llevo || [])])
   const huerfanas = Object.keys(v.checks.ida)
     .filter((k) => k.startsWith('p:') && v.checks.ida[k] && !enUso.has(k.slice(2)))
     .map((k) => s.prendas.find((p) => p.id === k.slice(2)))
@@ -288,7 +305,7 @@ export const avisos = computed(() => {
 
   // Pocas piezas de ropa interior o medias para los días del viaje
   CATS_SUELTAS.forEach((cat) => {
-    const n = llevoDe(cat).length
+    const n = llevoDe(cat).length + piezasPuestas(cat).length
     const r = recomendado()
     const unidad = cat === 'Medias' ? (n === 1 ? 'par de medias' : 'pares de medias') : n === 1 ? 'pieza de ropa interior' : 'piezas de ropa interior'
     if (n > 0 && n < r)

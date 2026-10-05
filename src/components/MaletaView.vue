@@ -4,7 +4,8 @@ import {
   viaje, dias, CATS, GRUPOS, ropaMaleta, puesto, seQueda, usos, basicosDe,
   total, hechos, pct, chk, setChk, addBasico, delBasico, sacarDeMaleta, textoLista,
   cantidad, avisos, descartarHuerfana, progresoGrupo,
-  CATS_SUELTAS, prendasDe, llevoDe, llevaPieza, toggleLlevo, recomendado, addPrenda
+  CATS_SUELTAS, prendasDe, llevoDe, llevaPieza, toggleLlevo, recomendado, addPrenda,
+  piezasPuestas, diasDePieza, esDeRepuesto
 } from '../store.js'
 
 const pesadas = ['Abajo', 'Zapatos', 'Abrigo'] // ocupan espacio: avisar si solo se usan un día
@@ -77,6 +78,8 @@ function agregarPieza(cat) {
   nuevaPieza.cat = null
   nuevaPieza.nombre = ''
 }
+const esPuesta = (id) => puesto.value.some((p) => p.id === id)
+const esFija = (id) => esPuesta(id) || (diasDePieza(id).length > 0 && !esDeRepuesto(id))
 const piezasVisibles = (cat) => (soloPendientes.value ? llevoDe(cat).filter((p) => !chk('p:' + p.id)) : llevoDe(cat))
 
 const iconoAviso = { falta: '!', sobra: '↩', exceso: '⇣', bien: '✓' }
@@ -161,13 +164,16 @@ const iconoAviso = { falta: '!', sobra: '↩', exceso: '⇣', bien: '✓' }
       <div v-for="cat in CATS_SUELTAS" :key="cat" class="suelta">
         <div class="ph">
           <h4>{{ cat }}</h4>
-          <span class="gp" :class="{ full: llevoDe(cat).length >= recomendado() }">
-            {{ llevoDe(cat).length }} de {{ recomendado() }} {{ cat === 'Medias' ? 'pares' : 'piezas' }}
+          <span class="gp" :class="{ full: llevoDe(cat).length + piezasPuestas(cat).length >= recomendado() }">
+            {{ llevoDe(cat).length + piezasPuestas(cat).length }} de {{ recomendado() }} {{ cat === 'Medias' ? 'pares' : 'piezas' }}
           </span>
         </div>
 
         <p class="hint" style="margin: 0; font-size: 12px">
-          {{ viaje.fase === 'ida' ? 'Toca las que llevas:' : 'Márcalas mientras empacas para volver. La que quede sin marcar, se quedó.' }}
+          {{ viaje.fase === 'ida' ? 'Las de tus pintas salen solas. Toca otras para llevarlas de repuesto:' : 'Márcalas mientras empacas para volver. La que quede sin marcar, se quedó.' }}
+        </p>
+        <p v-if="piezasPuestas(cat).length" class="puestas">
+          Puesta el {{ dias[0].largo.toLowerCase() }}: {{ piezasPuestas(cat).map((p) => p.nombre).join(', ') }}
         </p>
         <div class="chips" v-if="viaje.fase === 'ida'">
           <button
@@ -175,9 +181,10 @@ const iconoAviso = { falta: '!', sobra: '↩', exceso: '⇣', bien: '✓' }
             :key="p.id"
             type="button"
             class="chip"
-            :class="{ on: llevaPieza(p.id) }"
-            :aria-pressed="llevaPieza(p.id)"
-            @click="toggleLlevo(p.id)"
+            :class="{ on: llevaPieza(p.id) || esPuesta(p.id), fija: esFija(p.id) }"
+            :aria-pressed="llevaPieza(p.id) || esPuesta(p.id)"
+            :title="esPuesta(p.id) ? 'La llevas puesta' : diasDePieza(p.id).length ? 'Está en la pinta de ' + diasDePieza(p.id).join(', ') : ''"
+            @click="esFija(p.id) ? null : toggleLlevo(p.id)"
           >{{ p.nombre }}</button>
           <form v-if="nuevaPieza.cat === cat" class="chip-form" @submit.prevent="agregarPieza(cat)">
             <input
@@ -198,7 +205,9 @@ const iconoAviso = { falta: '!', sobra: '↩', exceso: '⇣', bien: '✓' }
               <input type="checkbox" :id="'chk-s-' + p.id" :checked="chk('p:' + p.id)" @change="setChk('p:' + p.id, $event.target.checked)" />
               <span :class="{ done: chk('p:' + p.id) }">{{ p.nombre }}</span>
             </label>
-            <button v-if="viaje.fase === 'ida'" type="button" class="del" @click="toggleLlevo(p.id)" :aria-label="'No llevar ' + p.nombre">×</button>
+            <span v-if="diasDePieza(p.id).length" class="meta">{{ diasDePieza(p.id).join(', ') }}</span>
+            <span v-else class="meta">repuesto</span>
+            <button v-if="viaje.fase === 'ida' && esDeRepuesto(p.id)" type="button" class="del" @click="toggleLlevo(p.id)" :aria-label="'No llevar ' + p.nombre">×</button>
           </li>
         </ul>
       </div>
@@ -243,6 +252,14 @@ const iconoAviso = { falta: '!', sobra: '↩', exceso: '⇣', bien: '✓' }
   flex-direction: column;
   gap: 8px;
   padding-top: 4px;
+}
+.puestas {
+  margin: 0;
+  font-size: 12px;
+  color: var(--pink);
+}
+.chip.fija {
+  cursor: default;
 }
 .suelta + .suelta {
   border-top: 1px solid var(--line);
