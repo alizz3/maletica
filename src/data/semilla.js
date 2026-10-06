@@ -74,6 +74,7 @@ export function viajeNuevo(id, destino, ida, vuelta) {
     vuelta,
     pintas: {},
     llevo: [],
+    comprar: [],
     info: { [ida]: { actividades: ['Viaje'] }, ...(vuelta !== ida ? { [vuelta]: { actividades: ['Regreso'] } } : {}) },
     checks: { ida: {}, vuelta: {} },
     fase: 'ida'
@@ -158,6 +159,7 @@ function completar(d) {
   d.viajes = (d.viajes || []).map((v) => ({
     pintas: {},
     llevo: [],
+    comprar: [],
     info: {},
     checks: { ida: {}, vuelta: {} },
     fase: 'ida',
@@ -172,4 +174,26 @@ export function normalizar(data) {
   if (data.version === 2 && Array.isArray(data.viajes)) return completar(migrarV2(data))
   if (data.prendas && data.pintas) return completar(migrarV1(data))
   return semilla()
+}
+
+// ---------- Adivinar la categoría por el nombre ----------
+const PISTAS = [
+  ['Ropa interior', /\b(cucos?|calzon(es|cito)?s?|tangas?|panty|panties|brasier|brassier|bras?ier|sosten|top deportivo)\b/],
+  ['Medias', /^medias?\b|\bmedias?\b/],
+  ['Pijama', /\bpijamas?\b/],
+  ['Zapatos', /\b(tenis|zapatos?|sandalias?|botas?|botines|chanclas?|baletas?|crocs)\b/],
+  ['Abrigo', /\b(buzo|chaqueta|saco|chompa|abrigo|cardigan|hoodie)\b/],
+  ['Abajo', /\b(jean|jeans|faldas?|falda-short|shorts?|pantalon(es)?|sudadera|leggins?|licra|bermuda)\b/],
+  ['Arriba', /\b(blusas?|esqueletos?|camisas?|camisetas?|top|crop|mallas?|body|vestido)\b/],
+  ['Accesorios', /\b(correas?|cinturon|aretes|collar|pulsera|gafas|gorra|sombrero|bolso|cartera|reloj|anillo)\b/],
+  ['Documentos y plata', /\b(cedula|efectivo|plata|dinero|tarjetas?|pasaporte|documentos?|carnet|licencia)\b|\$/],
+  ['Tecnología', /\b(celular|cargador(es)?|portatil|computador|audifonos|mouse|power ?bank|bateria|tablet|cable|usb|parlante)\b/],
+  ['Aseo y maquillaje', /\b(cepillo|cepillito|crema|desodorante|perfume|atomizador|base|brillos?|pestaninas?|labial|manteca|delineador(es)?|encrespador|cejas|espejo|polvos?|plancha|secador|cauchitos|depilatori[ao]|copa menstrual|toallas? higienicas?|protectores|jabon|shampoo|champu|acondicionador|bloqueador|desmaquil\w*|pomitos|nixoderm|maquillaje|rubor|corrector|esmalte|peinilla|pinzas|rasuradora|cuchilla|hilo dental|crema dental|dolor\w*|pastillas?|medicamentos?|ibuprofeno|acetaminofen)\b/]
+]
+const sinTildes = (t) => (t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+
+export function adivinarCat(nombre) {
+  const t = sinTildes(nombre)
+  for (const [cat, re] of PISTAS) if (re.test(t)) return cat
+  return 'Otras cosas'
 }

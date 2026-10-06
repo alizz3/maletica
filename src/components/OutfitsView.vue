@@ -2,7 +2,7 @@
 import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import {
   viaje, dias, CATS_PINTA, ACTIVIDADES, pintaDe, prendasDe, usos, togglePrenda, addPrenda,
-  infoDia, setInfo, actividadesDe, toggleActividad
+  infoDia, setInfo, actividadesDe, toggleActividad, diasSinOutfit, sugerirOutfits, maleta
 } from '../store.js'
 
 const diaSel = ref(0)
@@ -46,6 +46,16 @@ function crear(c) {
   if (n) togglePrenda(dia.value.key, addPrenda(n, c))
   creandoEn.value = null
 }
+// ----- Sugerencia automática -----
+const msgSugerencia = ref('')
+const hayRopaEnMaleta = computed(() => maleta.value.some((p) => ['Arriba', 'Abajo'].includes(p.cat)))
+function sugerir() {
+  const n = sugerirOutfits()
+  msgSugerencia.value = n
+    ? 'Armé ' + n + (n === 1 ? ' outfit' : ' outfits') + ' con lo de tu maleta. Cámbialos como quieras.'
+    : 'No alcanzó la ropa de la maleta para sugerir. Agrega blusas o bottoms en la Maleta.'
+}
+
 const etiquetaUso = (id) => (usos.value[id] ? ' · ' + usos.value[id] + (usos.value[id] === 1 ? ' día' : ' días') : '')
 </script>
 
@@ -67,6 +77,12 @@ const etiquetaUso = (id) => (usos.value[id] ? ' · ' + usos.value[id] + (usos.va
         <em v-if="actividadesDe(d.key).length">{{ actividadesDe(d.key).join(', ') }}</em>
       </button>
     </div>
+
+    <div v-if="diasSinOutfit.length && hayRopaEnMaleta" class="sugerir">
+      <span>{{ diasSinOutfit.length === 1 ? 'Hay 1 día' : 'Hay ' + diasSinOutfit.length + ' días' }} sin outfit.</span>
+      <button type="button" class="btn sm" @click="sugerir">✨ Sugerir con lo de mi maleta</button>
+    </div>
+    <p v-if="msgSugerencia" class="toast" role="status" style="margin: 0">{{ msgSugerencia }}</p>
 
     <div class="panel">
       <div class="row" style="justify-content: space-between">
@@ -145,6 +161,18 @@ const etiquetaUso = (id) => (usos.value[id] ? ' · ' + usos.value[id] + (usos.va
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.sugerir {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: var(--lav-soft);
+  border-radius: var(--r);
+  padding: 10px 12px;
+  font-size: 13px;
 }
 
 /* Actividades */

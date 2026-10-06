@@ -3,15 +3,30 @@ import { ref, computed } from 'vue'
 import {
   viaje, dias, CATS, CATS_ROPA, CATS_SUELTAS, maleta, maletaDe, puesto,
   total, hechos, pct, chk, setChk, listosDe, sacarDeMaleta, meterEnMaleta,
-  diasDePieza, recomendado, avisos, llevarTodasLasDePintas, textoLista
+  diasDePieza, recomendado, avisos, llevarTodasLasDePintas, textoLista, addComprar, delComprar, comprado
 } from '../store.js'
 import RegresoView from './RegresoView.vue'
 import PickerArmario from './PickerArmario.vue'
+import ImportarLista from './ImportarLista.vue'
 
 const pesadas = ['Abajo', 'Zapatos', 'Abrigo']
 const aviso = ref('')
 const soloPendientes = ref(false)
 const abierta = ref(null) // categoría con el armario desplegado
+const importando = ref(false)
+const nuevaCompra = ref('')
+function agregarCompra() {
+  if (nuevaCompra.value.trim()) addComprar(nuevaCompra.value)
+  nuevaCompra.value = ''
+}
+function marcarComprado(it) {
+  comprado(it.id)
+  avisar(it.nombre + ' pasó a la maleta')
+}
+function terminoImportar(msg) {
+  importando.value = false
+  avisar(msg)
+}
 let deshacer = null
 let timer
 
@@ -45,6 +60,7 @@ async function copiar() {
 }
 
 const porCat = computed(() => CATS.map((c) => ({ cat: c, items: maletaDe(c) })).filter((g) => g.items.length))
+const mostrarComprar = ref(false)
 const otrasCats = computed(() => CATS.filter((c) => !maletaDe(c).length))
 const ver = (items) => (soloPendientes.value ? items.filter((p) => !chk('p:' + p.id)) : items)
 const faltan = computed(() => total.value - hechos.value)
@@ -60,7 +76,10 @@ const iconoAviso = { pintas: '+', falta: '!', exceso: '⇣' }
         <button type="button" :class="{ on: viaje.fase === 'ida' }" @click="viaje.fase = 'ida'">Empacar (ida)</button>
         <button type="button" :class="{ on: viaje.fase === 'vuelta' }" @click="viaje.fase = 'vuelta'">Checklist de regreso</button>
       </div>
-      <button v-if="maleta.length" type="button" class="btn ghost" @click="copiar">Copiar lista</button>
+      <div class="row acciones" v-if="viaje.fase === 'ida'">
+        <button type="button" class="btn ghost" @click="importando = !importando">Importar lista</button>
+        <button v-if="maleta.length" type="button" class="btn ghost" @click="copiar">Copiar lista</button>
+      </div>
     </div>
 
     <div class="progress" v-if="total">
@@ -85,6 +104,27 @@ const iconoAviso = { pintas: '+', falta: '!', exceso: '⇣' }
     <RegresoView v-if="viaje.fase === 'vuelta'" :solo-pendientes="soloPendientes" />
 
     <template v-else>
+      <ImportarLista v-if="importando" @cerrar="importando = false" @listo="terminoImportar" />
+
+      <!-- Por comprar -->
+      <div class="panel comprar" v-if="(viaje.comprar || []).length || mostrarComprar">
+        <div class="ph">
+          <h3>Por comprar</h3>
+          <span class="gp">{{ (viaje.comprar || []).length }}</span>
+        </div>
+        <ul class="list">
+          <li v-for="it in viaje.comprar || []" :key="it.id">
+            <span style="flex: 1; min-width: 0">{{ it.nombre }}</span>
+            <button type="button" class="btn sm" @click="marcarComprado(it)">Ya lo compré</button>
+            <button type="button" class="del" :aria-label="'Quitar ' + it.nombre" @click="delComprar(it.id)">×</button>
+          </li>
+        </ul>
+        <form class="add" @submit.prevent="agregarCompra">
+          <input id="nueva-compra" v-model="nuevaCompra" placeholder="Agregar algo por comprar" aria-label="Algo por comprar" autocomplete="off" />
+          <button class="btn sm" type="submit">Agregar</button>
+        </form>
+      </div>
+
       <ul v-if="avisos.length" class="avisos" aria-label="Para revisar">
         <li v-for="(a, i) in avisos" :key="i" :class="a.tipo">
           <span class="ico" aria-hidden="true">{{ iconoAviso[a.tipo] }}</span>
@@ -143,6 +183,7 @@ const iconoAviso = { pintas: '+', falta: '!', exceso: '⇣' }
               @click="abierta = abierta === c ? null : c"
             >+ {{ c }}</button>
           </div>
+          <button v-if="!(viaje.comprar || []).length && !mostrarComprar" type="button" class="link porcomprar" @click="mostrarComprar = true">+ Anotar algo por comprar</button>
           <div v-if="abierta && otrasCats.includes(abierta)" class="nueva-sec">
             <h4>{{ abierta }}</h4>
             <PickerArmario :cat="abierta" @cerrar="abierta = null" />
@@ -196,6 +237,27 @@ h4 .sub {
 }
 .toggle input {
   accent-color: var(--lav);
+}
+.acciones {
+  gap: 6px;
+}
+.acciones .btn {
+  padding: 7px 12px;
+  font-size: 13px;
+}
+.comprar {
+  border-color: var(--pink);
+}
+.comprar .btn.sm {
+  padding: 4px 10px;
+  font-size: 12px;
+  background: var(--pink);
+}
+.porcomprar {
+  align-self: flex-start;
+  padding: 0;
+  font-size: 13px;
+  color: var(--pink);
 }
 .sec {
   display: flex;

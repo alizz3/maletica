@@ -7,7 +7,7 @@
 //   REGRESO  → todo lo que viajó (maleta + lo puesto) para que no se quede nada
 import { reactive, computed, watch } from 'vue'
 import {
-  CATS, CATS_PINTA, CATS_ROPA, CATS_COSAS, CATS_SUELTAS, ACTIVIDADES, SECCIONES, normalizar, viajeNuevo
+  CATS, CATS_PINTA, CATS_ROPA, CATS_COSAS, CATS_SUELTAS, ACTIVIDADES, SECCIONES, normalizar, viajeNuevo, adivinarCat
 } from './data/semilla.js'
 
 // Orden alfabético (ignora mayúsculas y tildes)
@@ -301,6 +301,128 @@ export const avisos = computed(() => {
   return out
 })
 
+// ---------- Sugerir outfits con lo que hay en la maleta ----------
+// Llena solo los días vacíos (nunca borra lo que ya armaste) y no toca el día de ida.
+// Tops rotan, bottoms y zapatos se repiten (incluye lo que llevas puesto),
+// ropa interior y medias: una distinta por día mientras alcancen.
+export const diasSinOutfit = computed(() =>
+  viaje.value ? dias.value.slice(1).filter((d) => !(viaje.value.pintas[d.key] || []).length) : []
+)
+export function sugerirOutfits() {
+  const v = viaje.value
+  if (!v) return 0
+  const deMaleta = (cat) => maletaDe(cat)
+  const conPuesto = (cat) => [...puesto.value.filter((p) => p.cat === cat), ...maletaDe(cat)]
+  const pools = {
+    Arriba: { items: deMaleta('Arriba'), repite: true },
+    Abajo: { items: conPuesto('Abajo'), repite: true },
+    Zapatos: { items: conPuesto('Zapatos'), repite: true },
+    'Ropa interior': { items: deMaleta('Ropa interior'), repite: false },
+    Medias: { items: deMaleta('Medias'), repite: false }
+  }
+  // Empieza después de lo que ya usaste en otros días, para no repetir de entrada
+  const usado = new Set(Object.values(v.pintas).flat())
+  Object.values(pools).forEach((pl) => {
+    pl.items = [...pl.items.filter((p) => !usado.has(p.id)), ...pl.items.filter((p) => usado.has(p.id))]
+    pl.i = 0
+  })
+  const ultimo = dias.value[dias.value.length - 1]
+  let armados = 0
+  diasSinOutfit.value.forEach((d) => {
+    // El día de regreso, si no hay nada, repite lo que llevabas puesto en la ida
+    if (d === ultimo && puesto.value.length && dias.value.length > 2) {
+      v.pintas[d.key] = puesto.value.map((p) => p.id)
+      armados++
+      return
+    }
+    const ids = []
+    Object.values(pools).forEach((pl) => {
+      if (!pl.items.length) return
+      if (!pl.repite && pl.i >= pl.items.length) return
+      ids.push(pl.items[pl.i % pl.items.length].id)
+      pl.i++
+    })
+    if (ids.length) {
+      v.pintas[d.key] = ids
+      armados++
+    }
+  })
+  return armados
+}
+
+// ---------- Importar una lista escrita o dictada ----------
+// Acepta viñetas, numeración y encabezados ("Aseo:", "Por comprar:").
+// "Blusa naranja → maleta de mamá" queda como "Blusa naranja (en la maleta de mamá)".
+export function leerLista(texto) {
+  const items = []
+  const comprar = []
+  let catHeader = null
+  let enComprar = false
+  ;(texto || '').split(/\r?\n/).forEach((linea) => {
+    let t = linea
+      .replace(/^[\s>*•·\-–—]+/, '')
+      .replace(/^\d+[.)]\s+/, '')
+      .replace(/^\[[ xX✓]?\]\s*/, '')
+      .replace(/^[\u2600-\u27BF\u{1F300}-\u{1FAFF}\uFE0F]+\s*/u, '')
+      .trim()
+    if (!t) return
+    // Encabezado: "Por comprar:", "Aseo:", "👚 Ropa"
+    const head = t.match(/^(.+?):$/)
+    if (head || /^(pendientes|por comprar|comprar)\b/i.test(t)) {
+      const h = plano(head ? head[1] : t)
+      enComprar = /comprar|pendiente/.test(h)
+      catHeader = enComprar ? null : CATS.find((c) => plano(c).startsWith(h) || h.startsWith(plano(c))) || null
+      if (head || enComprar) return
+    }
+    t = t.replace(/\s*(→|->|=>)\s*(.+)$/, (_, __, donde) => ' (en la ' + donde.replace(/^(en\s+)?(la\s+)?/i, '') + ')')
+    if (enComprar) {
+      comprar.push(t)
+      return
+    }
+    const existe = s.prendas.find((p) => plano(p.nombre) === plano(t))
+    items.push({ nombre: t, cat: existe ? existe.cat : catHeader || adivinarCat(t), existeId: existe ? existe.id : null })
+  })
+  return { items, comprar }
+}
+
+// Agrega lo leído al armario (si no existe) y a la maleta del viaje
+export function importarLista({ items, comprar }, empacado) {
+  const v = viaje.value
+  let nuevas = 0
+  items.forEach((it) => {
+    const nombre = it.nombre.trim()
+    if (!nombre) return
+    let id = it.existeId
+    if (!id) {
+      id = addPrenda(nombre, it.cat)
+      nuevas++
+    }
+    meterEnMaleta(id)
+    if (empacado) v.checks.ida['p:' + id] = true
+  })
+  comprar.forEach((n) => n.trim() && addComprar(n))
+  return { total: items.length, nuevas, comprar: comprar.length }
+}
+
+// ---------- Por comprar ----------
+export function addComprar(nombre) {
+  const v = viaje.value
+  if (!v.comprar) v.comprar = []
+  v.comprar.push({ id: 'c' + ++s.seq, nombre: nombre.trim() })
+}
+export function delComprar(id) {
+  viaje.value.comprar = (viaje.value.comprar || []).filter((x) => x.id !== id)
+}
+// Ya lo compraste: pasa al armario y a la maleta
+export function comprado(id) {
+  const v = viaje.value
+  const it = (v.comprar || []).find((x) => x.id === id)
+  if (!it) return
+  const existe = s.prendas.find((p) => plano(p.nombre) === plano(it.nombre))
+  meterEnMaleta(existe ? existe.id : addPrenda(it.nombre, adivinarCat(it.nombre)))
+  delComprar(id)
+}
+
 // ---------- Copiar lista ----------
 export function textoLista() {
   const v = viaje.value
@@ -313,4 +435,4 @@ export function textoLista() {
   return t
 }
 
-export { CATS, CATS_PINTA, CATS_ROPA, CATS_COSAS, CATS_SUELTAS, ACTIVIDADES, SECCIONES }
+export { CATS, CATS_PINTA, CATS_ROPA, CATS_COSAS, CATS_SUELTAS, ACTIVIDADES, SECCIONES, adivinarCat }
