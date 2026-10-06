@@ -12,6 +12,13 @@ export const CATS = [...CATS_ROPA, ...CATS_COSAS]
 // Piezas que se cuentan contra lo recomendado (días + 1)
 export const CATS_SUELTAS = ['Ropa interior', 'Medias']
 
+// Secciones del armario
+export const SECCIONES = [
+  { titulo: 'Ropa', cats: CATS_ROPA },
+  { titulo: 'Cosas', cats: ['Tecnología', 'Documentos y plata', 'Aseo y maquillaje'] },
+  { titulo: 'Extra', cats: ['Otras cosas'] }
+]
+
 export const ACTIVIDADES = ['Viaje', 'Paseo', 'Piscina', 'Salida de noche', 'En casa', 'Trabajo', 'Regreso']
 
 function armarioBase() {
@@ -67,7 +74,7 @@ export function viajeNuevo(id, destino, ida, vuelta) {
     vuelta,
     pintas: {},
     llevo: [],
-    info: { [ida]: { actividad: 'Viaje' }, ...(vuelta !== ida ? { [vuelta]: { actividad: 'Regreso' } } : {}) },
+    info: { [ida]: { actividades: ['Viaje'] }, ...(vuelta !== ida ? { [vuelta]: { actividades: ['Regreso'] } } : {}) },
     checks: { ida: {}, vuelta: {} },
     fase: 'ida'
   }
@@ -141,6 +148,13 @@ function migrarV1(old) {
 
 function completar(d) {
   d.prendas = (d.prendas || []).filter((p) => p && p.id)
+  // actividad (texto) → actividades (lista)
+  ;(d.viajes || []).forEach((v) =>
+    Object.values(v.info || {}).forEach((i) => {
+      if (!Array.isArray(i.actividades)) i.actividades = i.actividad ? [i.actividad] : []
+      delete i.actividad
+    })
+  )
   d.viajes = (d.viajes || []).map((v) => ({
     pintas: {},
     llevo: [],

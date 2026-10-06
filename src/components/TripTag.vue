@@ -35,11 +35,11 @@ function borrar() {
           <input id="ed-vuelta" type="date" v-model="viaje.vuelta" :min="viaje.ida" />
         </div>
       </div>
-      <p class="hint" style="margin: 0">Si acortas el viaje, las pintas de los días que quedan por fuera se guardan por si vuelves a alargarlo.</p>
+      <p class="hint" style="margin: 0">Si acortas el viaje, los outfits de los días que quedan por fuera se guardan por si vuelves a alargarlo.</p>
       <div class="row">
         <button v-if="!confirmar" type="button" class="link danger" @click="confirmar = true">Borrar este viaje</button>
         <template v-else>
-          <span class="hint">¿Seguro? Se borran sus pintas y su maleta.</span>
+          <span class="hint">¿Seguro? Se borran sus outfits y su maleta.</span>
           <button type="button" class="btn sm del-btn" @click="borrar">Sí, borrar</button>
           <button type="button" class="btn ghost sm" @click="confirmar = false">Cancelar</button>
         </template>

@@ -16,7 +16,7 @@ import ThemeToggle from './ThemeToggle.vue'
         <circle cx="32" cy="36" r="4" class="lock" />
       </svg>
       <span class="brand">Maletica</span>
-      <h1>La pinta de cada día y la maleta que se arma sola</h1>
+      <h1>El outfit de cada día y una maleta sin olvidos</h1>
       <p class="hint">Entra con tu cuenta de Google para que tus viajes y tu armario se guarden y los veas en el celular y en el computador.</p>
 
       <button type="button" class="btn google big" :disabled="entrando" @click="entrar">

@@ -6,12 +6,12 @@ import LoginView from './components/LoginView.vue'
 import TopBar from './components/TopBar.vue'
 import ViajesView from './components/ViajesView.vue'
 import TripTag from './components/TripTag.vue'
-import PintasView from './components/PintasView.vue'
+import OutfitsView from './components/OutfitsView.vue'
 import MaletaView from './components/MaletaView.vue'
 import ArmarioView from './components/ArmarioView.vue'
 import CookieBanner from './components/CookieBanner.vue'
 
-// Orden: login → Mis viajes → el viaje (pintas, maleta, armario)
+// Orden: login → Mis viajes → el viaje (outfits, maleta, armario)
 const pantalla = computed(() => {
   if (nubeDisponible && !authListo.value) return 'cargando'
   if (nubeDisponible && !usuario.value && !ui.sinCuenta) return 'login'
@@ -39,14 +39,14 @@ const pantalla = computed(() => {
       <template v-else>
         <TripTag />
         <nav class="tabs" aria-label="Secciones del viaje">
-          <button type="button" :class="{ on: ui.tab === 'pintas' }" :aria-current="ui.tab === 'pintas' ? 'page' : null" @click="ui.tab = 'pintas'">Pintas</button>
+          <button type="button" :class="{ on: ui.tab === 'pintas' }" :aria-current="ui.tab === 'pintas' ? 'page' : null" @click="ui.tab = 'pintas'">Outfits</button>
           <button type="button" :class="{ on: ui.tab === 'maleta' }" :aria-current="ui.tab === 'maleta' ? 'page' : null" @click="ui.tab = 'maleta'">
             Maleta <small>{{ hechos }}/{{ total }}</small>
           </button>
           <button type="button" :class="{ on: ui.tab === 'armario' }" :aria-current="ui.tab === 'armario' ? 'page' : null" @click="ui.tab = 'armario'">Armario</button>
         </nav>
         <main id="contenido">
-          <PintasView v-if="ui.tab === 'pintas'" />
+          <OutfitsView v-if="ui.tab === 'pintas'" />
           <MaletaView v-else-if="ui.tab === 'maleta'" />
           <ArmarioView v-else />
         </main>

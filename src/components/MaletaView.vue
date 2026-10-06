@@ -1,16 +1,17 @@
 <script setup>
-import { ref, reactive, computed, nextTick } from 'vue'
+import { ref, computed } from 'vue'
 import {
-  viaje, dias, CATS, CATS_ROPA, CATS_SUELTAS, prendasDe, maleta, maletaDe, puesto,
-  total, hechos, pct, chk, setChk, listosDe, enMaleta, esPuesta, toggleMaleta, sacarDeMaleta, meterEnMaleta,
-  addPrenda, diasDePieza, recomendado, avisos, llevarTodasLasDePintas, textoLista
+  viaje, dias, CATS, CATS_ROPA, CATS_SUELTAS, maleta, maletaDe, puesto,
+  total, hechos, pct, chk, setChk, listosDe, sacarDeMaleta, meterEnMaleta,
+  diasDePieza, recomendado, avisos, llevarTodasLasDePintas, textoLista
 } from '../store.js'
 import RegresoView from './RegresoView.vue'
+import PickerArmario from './PickerArmario.vue'
 
 const pesadas = ['Abajo', 'Zapatos', 'Abrigo']
 const aviso = ref('')
 const soloPendientes = ref(false)
-const eligiendo = ref(maleta.value.length === 0) // si la maleta está vacía, abre el armario
+const abierta = ref(null) // categoría con el armario desplegado
 let deshacer = null
 let timer
 
@@ -43,21 +44,8 @@ async function copiar() {
   }
 }
 
-// Agregar algo nuevo al armario y a la maleta sin salir de aquí
-const nueva = reactive({ cat: null, nombre: '' })
-async function abrirNueva(cat) {
-  nueva.cat = cat
-  nueva.nombre = ''
-  await nextTick()
-  document.getElementById('nueva-m-' + cat)?.focus()
-}
-function guardarNueva() {
-  const n = nueva.nombre.trim()
-  if (n) meterEnMaleta(addPrenda(n, nueva.cat))
-  nueva.cat = null
-}
-
 const porCat = computed(() => CATS.map((c) => ({ cat: c, items: maletaDe(c) })).filter((g) => g.items.length))
+const otrasCats = computed(() => CATS.filter((c) => !maletaDe(c).length))
 const ver = (items) => (soloPendientes.value ? items.filter((p) => !chk('p:' + p.id)) : items)
 const faltan = computed(() => total.value - hechos.value)
 const cuentaSuelta = (cat) => maletaDe(cat).length + puesto.value.filter((p) => p.cat === cat).length
@@ -105,68 +93,23 @@ const iconoAviso = { pintas: '+', falta: '!', exceso: '⇣' }
         </li>
       </ul>
 
-      <!-- ¿Qué vas a llevar? Elegir del armario -->
-      <div class="panel elegir">
-        <button type="button" class="elegir-head" :aria-expanded="eligiendo" @click="eligiendo = !eligiendo">
-          <span>
-            <strong>¿Qué vas a llevar?</strong>
-            <span class="hint">Toca en tu armario lo que llevas. Lo que no toques, se queda.</span>
-          </span>
-          <span class="chev" aria-hidden="true">{{ eligiendo ? '−' : '+' }}</span>
-        </button>
-
-        <template v-if="eligiendo">
-          <div class="group" v-for="c in CATS" :key="c">
-            <div class="ph">
-              <h3>{{ c }}</h3>
-              <span v-if="CATS_SUELTAS.includes(c)" class="gp" :class="{ full: cuentaSuelta(c) >= recomendado() }">
-                {{ cuentaSuelta(c) }} de {{ recomendado() }} {{ c === 'Medias' ? 'pares' : 'piezas' }}
-              </span>
-            </div>
-            <div class="chips">
-              <button
-                v-for="p in prendasDe(c)"
-                :key="p.id"
-                type="button"
-                class="chip"
-                :class="{ on: enMaleta(p.id) || esPuesta(p.id), fija: esPuesta(p.id) }"
-                :aria-pressed="enMaleta(p.id) || esPuesta(p.id)"
-                :disabled="esPuesta(p.id)"
-                :title="esPuesta(p.id) ? 'La llevas puesta' : ''"
-                @click="toggleMaleta(p.id)"
-              >
-                <span v-if="enMaleta(p.id)" aria-hidden="true">✓</span>
-                {{ p.nombre }}
-                <small v-if="esPuesta(p.id)">· puesta</small>
-              </button>
-              <form v-if="nueva.cat === c" class="chip-form" @submit.prevent="guardarNueva">
-                <input
-                  :id="'nueva-m-' + c"
-                  v-model="nueva.nombre"
-                  :placeholder="c === 'Ropa interior' ? 'Ej: Tanga negra, encaje a los lados solo al frente' : 'Describe la nueva…'"
-                  :aria-label="'Nueva en ' + c"
-                  autocomplete="off"
-                  @keydown.esc="nueva.cat = null"
-                />
-                <button class="btn sm" type="submit">Agregar</button>
-              </form>
-              <button v-else type="button" class="chip add-chip" @click="abrirNueva(c)">+ Nueva</button>
-            </div>
-          </div>
-          <button type="button" class="btn" @click="eligiendo = false">Listo, ver mi maleta</button>
-        </template>
-      </div>
-
-      <!-- Lo que ya está en la maleta -->
-      <div class="panel" v-if="maleta.length">
+      <!-- Tu maleta: cada sección con su "+" para traer cosas del armario -->
+      <div class="panel">
         <div class="ph">
           <h3>Tu maleta</h3>
-          <span class="gp" :class="{ full: hechos === total }">{{ hechos }}/{{ total }}</span>
+          <span v-if="maleta.length" class="gp" :class="{ full: hechos === total }">{{ hechos }}/{{ total }}</span>
         </div>
-        <template v-for="g in porCat" :key="g.cat">
-          <h4 v-if="ver(g.items).length">
+        <p v-if="!maleta.length" class="hint" style="margin: 0">
+          Está vacía. ¿Qué vas a llevar? Elige una categoría y trae lo que necesitas de tu armario.
+        </p>
+
+        <div v-for="g in porCat" :key="g.cat" class="sec">
+          <h4>
             {{ g.cat }}
             <small class="sub">{{ listosDe(g.items) }}/{{ g.items.length }}</small>
+            <small v-if="CATS_SUELTAS.includes(g.cat)" class="sub" :class="{ ok: cuentaSuelta(g.cat) >= recomendado() }">
+              · {{ cuentaSuelta(g.cat) }} de {{ recomendado() }} recomendad{{ g.cat === 'Medias' ? 'os' : 'as' }}
+            </small>
           </h4>
           <ul class="list">
             <li v-for="p in ver(g.items)" :key="p.id">
@@ -182,13 +125,29 @@ const iconoAviso = { pintas: '+', falta: '!', exceso: '⇣' }
               <button type="button" class="del" @click="quitar(p)" :aria-label="'Sacar ' + p.nombre + ' de la maleta'">×</button>
             </li>
           </ul>
-        </template>
-        <p v-if="soloPendientes && hechos === total" class="empty" style="margin: 0">Todo está empacado.</p>
-      </div>
-      <div v-else-if="!eligiendo" class="panel vacio">
-        <strong>Tu maleta está vacía</strong>
-        <span class="hint">Elige de tu armario lo que vas a llevar.</span>
-        <button type="button" class="btn" @click="eligiendo = true">Elegir del armario</button>
+          <PickerArmario v-if="abierta === g.cat" :cat="g.cat" @cerrar="abierta = null" />
+          <button v-else type="button" class="mas" @click="abierta = g.cat">+ Agregar en {{ g.cat.toLowerCase() }}</button>
+        </div>
+        <p v-if="soloPendientes && maleta.length && hechos === total" class="empty" style="margin: 0">Todo está empacado.</p>
+
+        <!-- Categorías que todavía no tienen nada -->
+        <div v-if="otrasCats.length" class="otras">
+          <span class="otras-lbl">{{ maleta.length ? 'Agregar de otra categoría:' : 'Categorías:' }}</span>
+          <div class="chips">
+            <button
+              v-for="c in otrasCats"
+              :key="c"
+              type="button"
+              class="chip"
+              :class="{ on: abierta === c }"
+              @click="abierta = abierta === c ? null : c"
+            >+ {{ c }}</button>
+          </div>
+          <div v-if="abierta && otrasCats.includes(abierta)" class="nueva-sec">
+            <h4>{{ abierta }}</h4>
+            <PickerArmario :cat="abierta" @cerrar="abierta = null" />
+          </div>
+        </div>
       </div>
 
       <div class="panel" v-if="puesto.length">
@@ -238,41 +197,49 @@ h4 .sub {
 .toggle input {
   accent-color: var(--lav);
 }
-.elegir {
-  border-color: var(--lav);
-}
-.elegir-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-  border: 0;
-  background: transparent;
-  padding: 0;
-  text-align: left;
-}
-.elegir-head > span:first-child {
+.sec {
   display: flex;
   flex-direction: column;
-  gap: 2px;
 }
-.elegir-head strong {
-  font-size: 16px;
+.sec + .sec {
+  border-top: 1px solid var(--line);
+  margin-top: 4px;
 }
-.elegir-head .hint {
-  font-size: 12px;
+.sub.ok {
+  color: var(--ok);
 }
-.chev {
-  flex: 0 0 30px;
-  height: 30px;
-  border-radius: 50%;
-  background: var(--lav-soft);
+.mas {
+  align-self: flex-start;
+  border: 0;
+  background: transparent;
   color: var(--lav);
-  display: grid;
-  place-items: center;
-  font-size: 18px;
   font-weight: 600;
+  font-size: 13px;
+  padding: 6px 0 10px;
+}
+.mas:hover {
+  text-decoration: underline;
+}
+.otras {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-top: 1px dashed var(--line);
+  padding-top: 12px;
+}
+.otras-lbl {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.otras .chip {
+  border-style: dashed;
+  color: var(--lav);
+  font-weight: 500;
+}
+.otras .chip.on {
+  border-style: solid;
+  color: var(--on-accent);
 }
 .chip.fija {
   cursor: default;

@@ -7,8 +7,13 @@
 //   REGRESO  → todo lo que viajó (maleta + lo puesto) para que no se quede nada
 import { reactive, computed, watch } from 'vue'
 import {
-  CATS, CATS_PINTA, CATS_ROPA, CATS_COSAS, CATS_SUELTAS, ACTIVIDADES, normalizar, viajeNuevo
+  CATS, CATS_PINTA, CATS_ROPA, CATS_COSAS, CATS_SUELTAS, ACTIVIDADES, SECCIONES, normalizar, viajeNuevo
 } from './data/semilla.js'
+
+// Orden alfabético (ignora mayúsculas y tildes)
+export const alfa = (a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base', numeric: true })
+// Texto sin tildes ni mayúsculas, para buscar
+export const plano = (t) => (t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim()
 
 const KEY = 'maletica-v2'
 const KEY_V1 = 'maletica-v1'
@@ -113,7 +118,7 @@ export function resumenViaje(v) {
 
 // ---------- Armario ----------
 const byId = (id) => s.prendas.find((p) => p.id === id)
-export const prendasDe = (cat) => s.prendas.filter((p) => p.cat === cat)
+export const prendasDe = (cat) => s.prendas.filter((p) => p.cat === cat).sort(alfa)
 export const pintaDe = (fecha) => ((viaje.value && viaje.value.pintas[fecha]) || []).map(byId).filter(Boolean)
 
 export function addPrenda(nombre, cat) {
@@ -186,7 +191,7 @@ export function toggleMaleta(id) {
 export const maleta = computed(() => {
   if (!viaje.value) return []
   const ids = new Set(viaje.value.llevo || [])
-  return s.prendas.filter((p) => ids.has(p.id) && !puestoIds.value.has(p.id))
+  return s.prendas.filter((p) => ids.has(p.id) && !puestoIds.value.has(p.id)).sort(alfa)
 })
 export const maletaDe = (cat) => maleta.value.filter((p) => p.cat === cat)
 
@@ -226,7 +231,7 @@ export const regreso = computed(() => {
   if (!viaje.value) return []
   const vuelve = new Set(ropaParaVolver.value.map((p) => p.id))
   const ids = new Set([...(viaje.value.llevo || []), ...puestoIds.value])
-  return s.prendas.filter((p) => ids.has(p.id) && !vuelve.has(p.id))
+  return s.prendas.filter((p) => ids.has(p.id) && !vuelve.has(p.id)).sort(alfa)
 })
 
 // ---------- Checks ----------
@@ -247,6 +252,13 @@ export const listosDe = (items, pref = 'p:') => items.filter((x) => chk(pref + x
 export function infoDia(fecha) {
   return (viaje.value.info && viaje.value.info[fecha]) || {}
 }
+export function actividadesDe(fecha) {
+  return infoDia(fecha).actividades || []
+}
+export function toggleActividad(fecha, a) {
+  const actual = actividadesDe(fecha)
+  setInfo(fecha, 'actividades', actual.includes(a) ? actual.filter((x) => x !== a) : [...actual, a])
+}
 export function setInfo(fecha, campo, valor) {
   const v = viaje.value
   if (!v.info) v.info = {}
@@ -263,12 +275,12 @@ export const avisos = computed(() => {
   if (pintasSinMaleta.value.length)
     out.push({
       tipo: 'pintas',
-      texto: 'Está en tus pintas pero no en la maleta: ' + pintasSinMaleta.value.map((p) => p.nombre).join(', ') + '.'
+      texto: 'Está en tus outfits pero no en la maleta: ' + pintasSinMaleta.value.map((p) => p.nombre).join(', ') + '.'
     })
 
   const sinPinta = dias.value.filter((d) => !(v.pintas[d.key] || []).length)
   if (sinPinta.length && sinPinta.length < dias.value.length)
-    out.push({ tipo: 'falta', texto: 'Falta la pinta de ' + sinPinta.map((d) => d.corto + ' ' + d.num).join(', ') + '.' })
+    out.push({ tipo: 'falta', texto: 'Falta el outfit de ' + sinPinta.map((d) => d.corto + ' ' + d.num).join(', ') + '.' })
 
   CATS_SUELTAS.forEach((cat) => {
     const n = maletaDe(cat).length + puesto.value.filter((p) => p.cat === cat).length
@@ -301,4 +313,4 @@ export function textoLista() {
   return t
 }
 
-export { CATS, CATS_PINTA, CATS_ROPA, CATS_COSAS, CATS_SUELTAS, ACTIVIDADES }
+export { CATS, CATS_PINTA, CATS_ROPA, CATS_COSAS, CATS_SUELTAS, ACTIVIDADES, SECCIONES }

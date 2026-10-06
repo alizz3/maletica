@@ -72,7 +72,7 @@ function confirmarBorrar(id) {
         <i :style="{ width: pctDe(proximo) + '%' }"></i>
       </div>
       <span class="mini">
-        Maleta {{ pctDe(proximo) }}% · {{ resumenViaje(proximo).dias }} días · {{ resumenViaje(proximo).conPinta }} pintas listas
+        Maleta {{ pctDe(proximo) }}% · {{ resumenViaje(proximo).dias }} días · {{ resumenViaje(proximo).conPinta }} outfits listos
       </span>
       <button type="button" class="btn" @click="abrirViaje(proximo.id)">Continuar viaje</button>
     </article>
@@ -85,7 +85,7 @@ function confirmarBorrar(id) {
           <strong>{{ v.destino }}</strong>
           <span class="fechas">{{ rangoTexto(v) }} · {{ resumenViaje(v).dias }} días</span>
           <span class="mini">
-            {{ resumenViaje(v).conPinta }}/{{ resumenViaje(v).dias }} pintas ·
+            {{ resumenViaje(v).conPinta }}/{{ resumenViaje(v).dias }} outfits ·
             {{ resumenViaje(v).listos }}/{{ resumenViaje(v).total }} en la maleta
           </span>
         </button>
@@ -119,7 +119,7 @@ function confirmarBorrar(id) {
         <p class="hint" style="margin: 0">Tus básicos (cargadores, aseo, documentos…) se copian solos a la maleta.</p>
         <p v-if="error" class="error" role="alert">{{ error }}</p>
         <div class="row">
-          <button class="btn" type="submit">Crear y armar pintas</button>
+          <button class="btn" type="submit">Crear viaje</button>
           <button v-if="s.viajes.length" type="button" class="btn ghost" @click="abierto = false">Cancelar</button>
         </div>
       </form>
