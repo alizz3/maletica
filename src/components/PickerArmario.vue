@@ -32,7 +32,7 @@ onMounted(() => document.getElementById(idInput.value)?.focus())
 </script>
 
 <template>
-  <div class="picker">
+  <div class="picker" v-fuera="(e) => !e.target.closest('.mas, .otras .chip') && emit('cerrar')">
     <div class="picker-top">
       <input
         :id="idInput"
@@ -82,13 +82,14 @@ onMounted(() => document.getElementById(idInput.value)?.focus())
   gap: 8px;
 }
 .picker-top input {
-  flex: 1;
+  flex: 1 1 0;
+  width: 0;
   min-width: 0;
+  font-size: 16px;
   border: 1.5px solid var(--lav);
   background: var(--surface);
   border-radius: 999px;
   padding: 7px 14px;
-  font-size: 14px;
 }
 .sm {
   padding: 6px 14px;

@@ -1,6 +1,6 @@
 <script setup>
 import { computed } from 'vue'
-import { dias, CATS, chk, setChk, listosDe, regreso, ropaParaVolver, REVISAR, esPuesta } from '../store.js'
+import { dias, CATS, chk, setChk, listosDe, regreso, ropaParaVolver, REVISAR, esPuesta, cantidad } from '../store.js'
 
 const props = defineProps({ soloPendientes: Boolean })
 
@@ -40,7 +40,8 @@ const ultimo = computed(() => dias.value[dias.value.length - 1])
             <input type="checkbox" :id="'vu-p-' + p.id" :checked="chk('p:' + p.id)" @change="setChk('p:' + p.id, $event.target.checked)" />
             <span :class="{ done: chk('p:' + p.id) }">{{ p.nombre }}</span>
           </label>
-          <span v-if="esPuesta(p.id)" class="meta">la llevabas puesta</span>
+          <span v-if="cantidad(p.id) > 1" class="meta qty">×{{ cantidad(p.id) }}</span>
+          <span v-if="esPuesta(p.id)" class="meta puesta">puesta en la ida</span>
         </li>
       </ul>
     </template>
@@ -88,6 +89,13 @@ h4 .sub {
   color: var(--muted);
   font-weight: 500;
   margin-left: 4px;
+}
+.qty {
+  color: var(--lav);
+  font-weight: 700;
+}
+.puesta {
+  color: var(--pink);
 }
 .regreso-intro {
   background: var(--pink-soft);

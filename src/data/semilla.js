@@ -19,7 +19,7 @@ export const SECCIONES = [
   { titulo: 'Extra', cats: ['Otras cosas'] }
 ]
 
-export const ACTIVIDADES = ['Viaje', 'Paseo', 'Piscina', 'Salida de noche', 'En casa', 'Trabajo', 'Regreso']
+export const ACTIVIDADES = ['Ida', 'Paseo', 'Piscina', 'Salida de noche', 'En casa', 'Trabajo', 'Regreso']
 
 function armarioBase() {
   let n = 0
@@ -75,7 +75,9 @@ export function viajeNuevo(id, destino, ida, vuelta) {
     pintas: {},
     llevo: [],
     comprar: [],
-    info: { [ida]: { actividades: ['Viaje'] }, ...(vuelta !== ida ? { [vuelta]: { actividades: ['Regreso'] } } : {}) },
+    cant: {},
+    aloja: {},
+    info: { [ida]: { actividades: ['Ida'] }, ...(vuelta !== ida ? { [vuelta]: { actividades: ['Regreso'] } } : {}) },
     checks: { ida: {}, vuelta: {} },
     fase: 'ida'
   }
@@ -154,18 +156,55 @@ function completar(d) {
     Object.values(v.info || {}).forEach((i) => {
       if (!Array.isArray(i.actividades)) i.actividades = i.actividad ? [i.actividad] : []
       delete i.actividad
+      i.actividades = i.actividades.map((a) => (a === 'Viaje' ? 'Ida' : a))
     })
   )
   d.viajes = (d.viajes || []).map((v) => ({
     pintas: {},
     llevo: [],
     comprar: [],
+    cant: {},
+    aloja: {},
     info: {},
     checks: { ida: {}, vuelta: {} },
     fase: 'ida',
     ...v
   }))
+  unirDuplicados(d)
   return d
+}
+
+// Si hay dos cosas con el mismo nombre en la misma categoría, quedan como una sola
+// y en la maleta se suma la cantidad.
+function unirDuplicados(d) {
+  const clave = (p) => p.cat + '|' + sinTildes(p.nombre).trim()
+  const primera = {}
+  const cambio = {}
+  d.prendas.forEach((p) => {
+    const k = clave(p)
+    if (primera[k]) cambio[p.id] = primera[k]
+    else primera[k] = p.id
+  })
+  if (!Object.keys(cambio).length) return
+  d.prendas = d.prendas.filter((p) => !cambio[p.id])
+  const nuevo = (id) => cambio[id] || id
+  d.viajes.forEach((v) => {
+    Object.keys(v.pintas).forEach((k) => (v.pintas[k] = [...new Set(v.pintas[k].map(nuevo))]))
+    const cuenta = {}
+    ;(v.llevo || []).forEach((id) => (cuenta[nuevo(id)] = (cuenta[nuevo(id)] || 0) + (v.cant?.[id] || 1)))
+    v.llevo = Object.keys(cuenta)
+    v.cant = {}
+    Object.entries(cuenta).forEach(([id, n]) => n > 1 && (v.cant[id] = n))
+    ;['ida', 'vuelta'].forEach((f) => {
+      const ch = {}
+      Object.entries(v.checks[f] || {}).forEach(([k, val]) => {
+        const [pre, id] = k.split(':')
+        const nk = pre === 'p' ? 'p:' + nuevo(id) : k
+        ch[nk] = ch[nk] === undefined ? val : ch[nk] && val
+      })
+      v.checks[f] = ch
+    })
+  })
 }
 
 export function normalizar(data) {

@@ -182,9 +182,20 @@ export function meterEnMaleta(id) {
 export function sacarDeMaleta(id) {
   const v = viaje.value
   v.llevo = (v.llevo || []).filter((x) => x !== id)
+  if (v.cant) delete v.cant[id]
 }
 export function toggleMaleta(id) {
   enMaleta(id) ? sacarDeMaleta(id) : meterEnMaleta(id)
+}
+
+// Cantidad de una cosa en la maleta (ej. 3 brillos)
+export const cantidad = (id) => (viaje.value?.cant?.[id]) || 1
+export function setCantidad(id, n) {
+  const v = viaje.value
+  if (!v.cant) v.cant = {}
+  n = Math.max(1, Math.min(99, Math.round(n) || 1))
+  if (n === 1) delete v.cant[id]
+  else v.cant[id] = n
 }
 
 // Lo que va en la maleta para empacar (sin lo que llevas puesto)
@@ -379,8 +390,20 @@ export function leerLista(texto) {
       comprar.push(t)
       return
     }
+    // "3 brillos" → Brillos ×3
+    let cant = 1
+    const num = t.match(/^(\d{1,2})\s*(x\s+)?(?!\d)([^\d].*)$/i)
+    if (num && +num[1] > 1 && +num[1] < 50 && !/^\$/.test(t)) {
+      cant = +num[1]
+      t = num[3].charAt(0).toUpperCase() + num[3].slice(1)
+    }
+    const repetida = items.find((i) => plano(i.nombre) === plano(t))
+    if (repetida) {
+      repetida.cant += cant
+      return
+    }
     const existe = s.prendas.find((p) => plano(p.nombre) === plano(t))
-    items.push({ nombre: t, cat: existe ? existe.cat : catHeader || adivinarCat(t), existeId: existe ? existe.id : null })
+    items.push({ nombre: t, cant, cat: existe ? existe.cat : catHeader || adivinarCat(t), existeId: existe ? existe.id : null })
   })
   return { items, comprar }
 }
@@ -398,6 +421,7 @@ export function importarLista({ items, comprar }, empacado) {
       nuevas++
     }
     meterEnMaleta(id)
+    if (it.cant > 1) setCantidad(id, it.cant)
     if (empacado) v.checks.ida['p:' + id] = true
   })
   comprar.forEach((n) => n.trim() && addComprar(n))
@@ -423,13 +447,20 @@ export function comprado(id) {
   delComprar(id)
 }
 
+// ---------- Alojamiento ----------
+export function setAloja(campo, valor) {
+  const v = viaje.value
+  if (!v.aloja) v.aloja = {}
+  v.aloja[campo] = valor
+}
+
 // ---------- Copiar lista ----------
 export function textoLista() {
   const v = viaje.value
   let t = 'Maleta ' + v.destino + ' (' + rango.value + ')'
   CATS.forEach((cat) => {
     const l = maletaDe(cat)
-    if (l.length) t += '\n\n' + cat + ':\n' + l.map((p) => '- ' + p.nombre).join('\n')
+    if (l.length) t += '\n\n' + cat + ':\n' + l.map((p) => '- ' + p.nombre + (cantidad(p.id) > 1 ? ' ×' + cantidad(p.id) : '')).join('\n')
   })
   if (puesto.value.length) t += '\n\nPuesto: ' + puesto.value.map((p) => p.nombre).join(', ')
   return t

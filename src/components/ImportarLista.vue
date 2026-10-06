@@ -55,6 +55,7 @@ function agregar() {
       <ul class="filas">
         <li v-for="(it, i) in leida.items" :key="i">
           <input class="nom" :id="'imp-n-' + i" v-model="it.nombre" :aria-label="'Nombre ' + (i + 1)" />
+          <label class="cant" :for="'imp-q-' + i">×<input :id="'imp-q-' + i" type="number" min="1" max="99" v-model.number="it.cant" :aria-label="'Cantidad de ' + it.nombre" /></label>
           <span v-if="it.existeId" class="ya">ya en tu armario</span>
           <select v-else class="cat" :id="'imp-c-' + i" v-model="it.cat" :aria-label="'Categoría de ' + it.nombre">
             <optgroup v-for="s in SECCIONES" :key="s.titulo" :label="s.titulo">
@@ -166,6 +167,22 @@ h4 {
   font-size: 11px;
   font-weight: 600;
   max-width: 140px;
+}
+.cant {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.cant input {
+  width: 42px;
+  border: 1.5px solid var(--line);
+  background: var(--surface);
+  border-radius: 8px;
+  padding: 2px 4px;
+  font-size: 12px;
+  text-align: center;
 }
 .ya {
   font-size: 11px;

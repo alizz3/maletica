@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, watch, nextTick } from 'vue'
 import {
   viaje, dias, CATS_PINTA, ACTIVIDADES, pintaDe, prendasDe, usos, togglePrenda, addPrenda,
   infoDia, setInfo, actividadesDe, toggleActividad, diasSinOutfit, sugerirOutfits, maleta
@@ -18,12 +18,6 @@ const notas = computed(() => (dia.value ? infoDia(dia.value.key).notas || '' : '
 
 // ----- Actividades: menú desplegable con varias opciones -----
 const actsAbierto = ref(false)
-const actsRef = ref(null)
-function fuera(e) {
-  if (actsRef.value && !actsRef.value.contains(e.target)) actsAbierto.value = false
-}
-onMounted(() => document.addEventListener('click', fuera))
-onBeforeUnmount(() => document.removeEventListener('click', fuera))
 
 // ----- Prendas: un select por categoría -----
 const creandoEn = ref(null)
@@ -92,7 +86,7 @@ const etiquetaUso = (id) => (usos.value[id] ? ' · ' + usos.value[id] + (usos.va
       </div>
 
       <!-- Actividades (varias) -->
-      <div class="acts" ref="actsRef">
+      <div class="acts">
         <button
           type="button"
           id="acts-btn"
@@ -105,7 +99,7 @@ const etiquetaUso = (id) => (usos.value[id] ? ' · ' + usos.value[id] + (usos.va
           <span class="val" :class="{ vacio: !acts.length }">{{ acts.length ? acts.join(', ') : '¿Qué vas a hacer?' }}</span>
           <span class="caret" aria-hidden="true">▾</span>
         </button>
-        <div v-if="actsAbierto" class="acts-menu" role="group" aria-label="Actividades del día">
+        <div v-if="actsAbierto" v-fuera="(e) => !e.target.closest('#acts-btn') && (actsAbierto = false)" class="acts-menu" role="group" aria-label="Actividades del día">
           <label v-for="a in ACTIVIDADES" :key="a" :for="'act-' + a">
             <input type="checkbox" :id="'act-' + a" :checked="acts.includes(a)" @change="toggleActividad(dia.key, a)" />
             {{ a }}
@@ -131,12 +125,20 @@ const etiquetaUso = (id) => (usos.value[id] ? ' · ' + usos.value[id] + (usos.va
               {{ p.nombre }}
               <button type="button" class="x" :aria-label="'Quitar ' + p.nombre" @click="togglePrenda(dia.key, p.id)">×</button>
             </span>
-            <form v-if="creandoEn === c" class="nueva" @submit.prevent="crear(c)">
+            <form v-if="creandoEn === c" v-fuera="() => crear(c)" class="nueva" @submit.prevent="crear(c)">
               <input :id="'nueva-o-' + c" v-model="nombreNuevo" placeholder="Nombre de la prenda" :aria-label="'Nueva prenda en ' + c" autocomplete="off" @keydown.esc="creandoEn = null" />
               <button class="btn sm" type="submit">Agregar</button>
             </form>
-            <select v-else :id="'sel-' + c" class="slot-sel" :class="{ mas: elegidasDe(c).length }" @change="elegir(c, $event)">
-              <option value="">{{ elegidasDe(c).length ? '+ otra' : 'Elegir…' }}</option>
+            <select
+              v-else
+              :id="'sel-' + c"
+              class="slot-sel"
+              :class="{ mas: elegidasDe(c).length }"
+              :aria-label="elegidasDe(c).length ? 'Agregar otra en ' + c : 'Elegir ' + c"
+              :title="elegidasDe(c).length ? 'Agregar otra' : ''"
+              @change="elegir(c, $event)"
+            >
+              <option value="">{{ elegidasDe(c).length ? '+' : 'Elegir…' }}</option>
               <option v-for="p in disponiblesDe(c)" :key="p.id" :value="p.id">{{ p.nombre }}{{ etiquetaUso(p.id) }}</option>
               <option value="__nueva">+ Nueva prenda…</option>
             </select>
@@ -316,7 +318,16 @@ const etiquetaUso = (id) => (usos.value[id] ? ' · ' + usos.value[id] + (usos.va
 }
 .slot-sel.mas {
   flex: 0 0 auto;
-  width: 96px;
+  width: 40px;
+  height: 30px;
+  padding: 0;
+  text-align: center;
+  text-align-last: center;
+  font-size: 18px;
+  line-height: 1;
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
   border-style: dashed;
   color: var(--lav);
   font-weight: 600;
@@ -325,15 +336,21 @@ const etiquetaUso = (id) => (usos.value[id] ? ' · ' + usos.value[id] + (usos.va
   display: flex;
   gap: 6px;
   flex: 1 1 100%;
+  width: 100%;
+  min-width: 0;
+}
+.nueva .btn {
+  flex: 0 0 auto;
 }
 .nueva input {
-  flex: 1;
+  flex: 1 1 0;
+  width: 0;
   min-width: 0;
+  font-size: 16px;
   border: 1.5px solid var(--lav);
   background: var(--surface);
   border-radius: 999px;
   padding: 5px 12px;
-  font-size: 13px;
 }
 .sm {
   padding: 5px 12px;
