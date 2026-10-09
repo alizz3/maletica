@@ -5,7 +5,13 @@ import { dias, CATS, chk, setChk, listosDe, regreso, ropaParaVolver, REVISAR, es
 const props = defineProps({ soloPendientes: Boolean })
 
 const ver = (items, pref) => (props.soloPendientes ? items.filter((x) => !chk(pref + x.id)) : items)
-const porCat = computed(() => CATS.map((c) => ({ cat: c, items: regreso.value.filter((p) => p.cat === c) })).filter((g) => g.items.length))
+const porCat = computed(() =>
+  CATS.map((c) => ({
+    cat: c,
+    items: regreso.value.filter((p) => p.cat === c),
+    puestas: ropaParaVolver.value.filter((p) => p.cat === c)
+  })).filter((g) => g.items.length || g.puestas.length)
+)
 const revisar = computed(() => REVISAR.map((nombre, i) => ({ id: i, nombre })))
 const ultimo = computed(() => dias.value[dias.value.length - 1])
 </script>
@@ -18,11 +24,6 @@ const ultimo = computed(() => dias.value[dias.value.length - 1])
     </p>
   </div>
 
-  <div class="panel" v-if="ropaParaVolver.length">
-    <h3>Te pones para volver ({{ ultimo.largo.toLowerCase() }})</h3>
-    <p style="margin: 0; font-size: 14px">{{ ropaParaVolver.map((p) => p.nombre).join(' · ') }}</p>
-  </div>
-
   <div class="panel">
     <div class="ph">
       <h3>Todo lo que viajó</h3>
@@ -30,11 +31,19 @@ const ultimo = computed(() => dias.value[dias.value.length - 1])
         {{ listosDe(regreso) }}/{{ regreso.length }}
       </span>
     </div>
+    <span v-if="ropaParaVolver.length" class="leyenda"><i aria-hidden="true"></i> te la pones para volver ({{ ultimo.largo.toLowerCase() }})</span>
     <template v-for="g in porCat" :key="g.cat">
-      <h4 v-if="ver(g.items, 'p:').length">
-        {{ g.cat }} <small class="sub">{{ listosDe(g.items) }}/{{ g.items.length }}</small>
+      <h4 v-if="ver(g.items, 'p:').length || (!soloPendientes && g.puestas.length)">
+        {{ g.cat }} <small class="sub" v-if="g.items.length">{{ listosDe(g.items) }}/{{ g.items.length }}</small>
       </h4>
       <ul class="list">
+        <template v-if="!soloPendientes">
+          <li v-for="p in g.puestas" :key="'pv-' + p.id" class="puesta-fila">
+            <span class="dot" aria-hidden="true"></span>
+            <span class="nom">{{ p.nombre }}</span>
+            <span class="meta tag-puesta">Puesta · Regreso</span>
+          </li>
+        </template>
         <li v-for="p in ver(g.items, 'p:')" :key="p.id">
           <label>
             <input type="checkbox" :id="'vu-p-' + p.id" :checked="chk('p:' + p.id)" @change="setChk('p:' + p.id, $event.target.checked)" />
@@ -96,6 +105,39 @@ h4 .sub {
 }
 .puesta {
   color: var(--pink);
+}
+.leyenda {
+  align-self: flex-end;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--pink);
+}
+.leyenda i,
+.dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--pink);
+  flex: 0 0 10px;
+}
+.list li.puesta-fila {
+  gap: 10px;
+}
+.puesta-fila .dot {
+  margin: 0 6px;
+}
+.puesta-fila .nom {
+  flex: 1;
+  min-width: 0;
+}
+.tag-puesta {
+  color: var(--pink);
+  background: var(--pink-soft);
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-weight: 600;
 }
 .regreso-intro {
   background: var(--pink-soft);
