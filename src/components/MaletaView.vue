@@ -4,7 +4,7 @@ import {
   viaje, dias, CATS, CATS_ROPA, CATS_SUELTAS, maleta, maletaDe, puesto,
   total, hechos, pct, chk, setChk, listosDe, sacarDeMaleta, meterEnMaleta,
   diasDePieza, recomendado, avisos, llevarTodasLasDePintas, textoLista, addComprar, delComprar, comprado,
-  cantidad, setCantidad, noUsadoAntes, ui, pideBalance, balanceHecho
+  cantidad, setCantidad, noUsadoAntes, ui, pideBalance, balanceHecho, marcarTodo
 } from '../store.js'
 import RegresoView from './RegresoView.vue'
 import PickerArmario from './PickerArmario.vue'
@@ -126,10 +126,26 @@ const iconoAviso = { pintas: '+', falta: '!', exceso: '⇣' }
           <template v-if="faltan === 0">{{ viaje.fase === 'ida' ? '¡Maleta lista! Todo empacado.' : '¡Todo listo para volver! No se queda nada.' }}</template>
           <template v-else>{{ hechos }} de {{ total }} {{ viaje.fase === 'ida' ? 'empacadas' : 'listas para volver' }} · faltan {{ faltan }}</template>
         </span>
+        <span class="row" style="gap: 10px">
+        <button
+          type="button"
+          class="todo"
+          :class="{ lleno: faltan === 0 }"
+          :aria-label="faltan === 0 ? 'Desmarcar todo' : 'Marcar todo'"
+          :title="faltan === 0 ? 'Desmarcar todo' : 'Marcar todo'"
+          @click="marcarTodo(faltan !== 0)"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="3.5" y="3.5" width="17" height="17" rx="4.5" />
+            <path v-if="faltan !== 0" d="M7.5 12.5l3 3 6-6.5" />
+            <path v-else d="M8 12h8" />
+          </svg>
+        </button>
         <label class="toggle" for="solo-pend">
           <input id="solo-pend" type="checkbox" v-model="soloPendientes" />
           Ver solo pendientes
         </label>
+        </span>
       </div>
     </div>
 
@@ -457,6 +473,30 @@ h4 .sub {
   font-size: 13px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
+}
+.todo {
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--lav-soft);
+  color: var(--lav);
+  display: grid;
+  place-items: center;
+  padding: 0;
+}
+.todo:hover {
+  background: var(--lav);
+  color: var(--on-accent);
+}
+.todo svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 .pide {
   border-color: var(--pink);

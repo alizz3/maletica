@@ -256,6 +256,14 @@ const keys = computed(() => {
 export const total = computed(() => keys.value.length)
 export const hechos = computed(() => (viaje.value ? keys.value.filter((k) => viaje.value.checks[viaje.value.fase][k]).length : 0))
 export const pct = computed(() => (total.value ? Math.round((hechos.value / total.value) * 100) : 0))
+// Marca o desmarca todo lo de la lista actual (ida o regreso)
+export function marcarTodo(valor) {
+  const v = viaje.value
+  keys.value.forEach((k) => {
+    if (valor) v.checks[v.fase][k] = true
+    else delete v.checks[v.fase][k]
+  })
+}
 export const chk = (k) => !!viaje.value.checks[viaje.value.fase][k]
 export const setChk = (k, val) => (viaje.value.checks[viaje.value.fase][k] = val)
 export const listosDe = (items, pref = 'p:') => items.filter((x) => chk(pref + x.id)).length
