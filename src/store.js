@@ -48,12 +48,13 @@ watch(
 )
 
 // ---------- Navegación (no se guarda) ----------
-export const ui = reactive({ pantalla: 'viajes', viajeId: null, tab: 'pintas', sinCuenta: false, balance: false })
+export const ui = reactive({ pantalla: 'viajes', viajeId: null, tab: 'pintas', sinCuenta: false, balance: false, agrupar: 'tipo' })
 
 export function abrirViaje(id, { balance = false } = {}) {
   ui.viajeId = id
   ui.tab = balance ? 'maleta' : 'pintas'
   ui.balance = balance
+  ui.agrupar = 'tipo'
   ui.pantalla = 'viaje'
 }
 export function irAViajes() {
@@ -179,6 +180,12 @@ export function meterEnMaleta(id) {
   const v = viaje.value
   if (!v.llevo) v.llevo = []
   if (!v.llevo.includes(id)) v.llevo.push(id)
+  // Si esta cosa siempre va en un bolso, entra directo ahí
+  const hab = s.bolsoHabitual?.[id]
+  if (hab && (s.bolsos || []).some((b) => b.id === hab) && !v.enBolso?.[id]) {
+    if (!v.enBolso) v.enBolso = {}
+    v.enBolso[id] = hab
+  }
 }
 export function sacarDeMaleta(id) {
   const v = viaje.value
@@ -242,9 +249,65 @@ export const ropaParaVolver = computed(() => {
 export const regreso = computed(() => {
   if (!viaje.value) return []
   const vuelve = new Set(ropaParaVolver.value.map((p) => p.id))
-  const ids = new Set([...(viaje.value.llevo || []), ...puestoIds.value])
+  const ids = new Set([...(viaje.value.llevo || []), ...puestoIds.value, ...(viaje.value.traigo || [])])
   return s.prendas.filter((p) => ids.has(p.id) && !vuelve.has(p.id)).sort(alfa)
 })
+
+// ---------- Lo que traes de vuelta y no llevabas (regalos, compras) ----------
+export const esTraigo = (id) => (viaje.value?.traigo || []).includes(id)
+export function addTraigo(nombre) {
+  const n = nombre.trim()
+  if (!n) return
+  const v = viaje.value
+  if (!v.traigo) v.traigo = []
+  const existe = s.prendas.find((p) => plano(p.nombre) === plano(n))
+  const id = existe ? existe.id : addPrenda(n, adivinarCat(n))
+  if (!v.traigo.includes(id) && !(v.llevo || []).includes(id)) v.traigo.push(id)
+  return id
+}
+export function delTraigo(id) {
+  const v = viaje.value
+  v.traigo = (v.traigo || []).filter((x) => x !== id)
+  delete v.checks.vuelta['p:' + id]
+}
+
+// ---------- Bolsos dentro de la maleta ----------
+// Los bolsos son tuyos (sirven para todos los viajes); en qué bolso va cada cosa se guarda por viaje
+// y la app recuerda el último bolso de cada cosa para el próximo viaje.
+export const BOLSOS_SUGERIDOS = ['Neceser de maquillaje', 'Bolsa del computador', 'Cucos y medias', 'Bolso de mano', 'Bolsa de aseo']
+export function crearBolso(nombre) {
+  const n = nombre.trim()
+  if (!n) return null
+  if (!s.bolsos) s.bolsos = []
+  const ya = s.bolsos.find((b) => plano(b.nombre) === plano(n))
+  if (ya) return ya.id
+  const id = 'g' + ++s.seq
+  s.bolsos.push({ id, nombre: n })
+  return id
+}
+export function renombrarBolso(id, nombre) {
+  const b = (s.bolsos || []).find((x) => x.id === id)
+  if (b && nombre.trim()) b.nombre = nombre.trim()
+}
+export function borrarBolso(id) {
+  s.bolsos = (s.bolsos || []).filter((b) => b.id !== id)
+  s.viajes.forEach((v) => Object.keys(v.enBolso || {}).forEach((k) => v.enBolso[k] === id && delete v.enBolso[k]))
+  Object.keys(s.bolsoHabitual || {}).forEach((k) => s.bolsoHabitual[k] === id && delete s.bolsoHabitual[k])
+}
+export const bolsoDe = (id) => viaje.value?.enBolso?.[id] || null
+export const nombreBolso = (id) => (s.bolsos || []).find((b) => b.id === bolsoDe(id))?.nombre || ''
+export function setBolso(itemId, bolsoId) {
+  const v = viaje.value
+  if (!v.enBolso) v.enBolso = {}
+  if (!s.bolsoHabitual) s.bolsoHabitual = {}
+  if (bolsoId) {
+    v.enBolso[itemId] = bolsoId
+    s.bolsoHabitual[itemId] = bolsoId
+  } else {
+    delete v.enBolso[itemId]
+    delete s.bolsoHabitual[itemId]
+  }
+}
 
 // ---------- Checks ----------
 const keys = computed(() => {

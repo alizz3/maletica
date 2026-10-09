@@ -4,13 +4,15 @@ import {
   viaje, dias, CATS, CATS_ROPA, CATS_SUELTAS, maleta, maletaDe, puesto,
   total, hechos, pct, chk, setChk, listosDe, sacarDeMaleta, meterEnMaleta,
   diasDePieza, recomendado, avisos, llevarTodasLasDePintas, textoLista, addComprar, delComprar, comprado,
-  cantidad, setCantidad, noUsadoAntes, ui, pideBalance, balanceHecho, marcarTodo
+  cantidad, setCantidad, noUsadoAntes, ui, pideBalance, balanceHecho, marcarTodo, nombreBolso
 } from '../store.js'
 import RegresoView from './RegresoView.vue'
 import PickerArmario from './PickerArmario.vue'
 import ImportarLista from './ImportarLista.vue'
 import BalanceView from './BalanceView.vue'
 import LeccionesPanel from './LeccionesPanel.vue'
+import BolsosView from './BolsosView.vue'
+import AgruparToggle from './AgruparToggle.vue'
 
 const pesadas = ['Abajo', 'Zapatos', 'Abrigo']
 const aviso = ref('')
@@ -197,6 +199,9 @@ const iconoAviso = { pintas: '+', falta: '!', exceso: '⇣' }
         <p v-if="!maleta.length && !puesto.length" class="hint" style="margin: 0">
           Está vacía. ¿Qué vas a llevar? Elige una categoría y trae lo que necesitas de tu armario.
         </p>
+        <AgruparToggle v-if="maleta.length" />
+        <BolsosView v-if="ui.agrupar === 'bolso' && maleta.length" :items="maleta" :solo-pendientes="soloPendientes" />
+        <template v-else>
         <div class="row global" v-if="porCat.length > 1">
           <button type="button" class="link" @click="todo(false)">Contraer todo</button>
           <span aria-hidden="true">·</span>
@@ -234,6 +239,7 @@ const iconoAviso = { pintas: '+', falta: '!', exceso: '⇣' }
                   <span v-else-if="diasDePieza(p.id).length === 1 && pesadas.includes(p.cat)" class="meta warn" title="Ocupa espacio y solo la usas un día">solo {{ diasDePieza(p.id)[0] }}</span>
                   <span v-else-if="diasDePieza(p.id).length === 1" class="meta">{{ diasDePieza(p.id)[0] }}</span>
                 </template>
+                <span v-if="nombreBolso(p.id)" class="meta en-bolso">{{ nombreBolso(p.id) }}</span>
                 <span v-if="noUsadoAntes(p.id).length" class="meta warn" :title="'Lo llevaste a ' + noUsadoAntes(p.id).join(', ') + ' y no lo usaste'">sin usar antes</span>
                 <span v-if="editandoCant === p.id" class="stepper" v-fuera="() => (editandoCant = null)">
                   <button type="button" :disabled="cantidad(p.id) <= 1" :aria-label="'Una menos de ' + p.nombre" @click="setCantidad(p.id, cantidad(p.id) - 1)">−</button>
@@ -275,6 +281,7 @@ const iconoAviso = { pintas: '+', falta: '!', exceso: '⇣' }
             <PickerArmario :cat="abierta" @cerrar="abierta = null" />
           </div>
         </div>
+        </template>
       </div>
 
       <!-- Por comprar (al final) -->
@@ -497,6 +504,12 @@ h4 .sub {
   stroke-width: 2;
   stroke-linecap: round;
   stroke-linejoin: round;
+}
+.en-bolso {
+  color: var(--lav);
+  background: var(--lav-soft);
+  padding: 1px 8px;
+  border-radius: 999px;
 }
 .pide {
   border-color: var(--pink);

@@ -1,6 +1,18 @@
 <script setup>
-import { computed } from 'vue'
-import { dias, CATS, chk, setChk, listosDe, regreso, ropaParaVolver, REVISAR, esPuesta, cantidad } from '../store.js'
+import { ref, computed } from 'vue'
+import {
+  dias, CATS, chk, setChk, listosDe, regreso, ropaParaVolver, REVISAR, esPuesta, cantidad,
+  ui, viaje, s, esTraigo, addTraigo, delTraigo, nombreBolso
+} from '../store.js'
+import BolsosView from './BolsosView.vue'
+import AgruparToggle from './AgruparToggle.vue'
+
+const nuevoTraigo = ref('')
+function agregarTraigo() {
+  addTraigo(nuevoTraigo.value)
+  nuevoTraigo.value = ''
+}
+const traigo = computed(() => (viaje.value.traigo || []).map((id) => s.prendas.find((p) => p.id === id)).filter(Boolean))
 
 const props = defineProps({ soloPendientes: Boolean })
 
@@ -31,6 +43,9 @@ const ultimo = computed(() => dias.value[dias.value.length - 1])
         {{ listosDe(regreso) }}/{{ regreso.length }}
       </span>
     </div>
+    <AgruparToggle v-if="regreso.length" />
+    <BolsosView v-if="ui.agrupar === 'bolso' && regreso.length" :items="regreso" :solo-pendientes="soloPendientes" regreso />
+    <template v-else>
     <span v-if="ropaParaVolver.length" class="leyenda"><i aria-hidden="true"></i> te la pones para volver ({{ ultimo.largo.toLowerCase() }})</span>
     <template v-for="g in porCat" :key="g.cat">
       <h4 v-if="ver(g.items, 'p:').length || (!soloPendientes && g.puestas.length)">
@@ -51,10 +66,32 @@ const ultimo = computed(() => dias.value[dias.value.length - 1])
           </label>
           <span v-if="cantidad(p.id) > 1" class="meta qty">×{{ cantidad(p.id) }}</span>
           <span v-if="esPuesta(p.id)" class="meta puesta">puesta en la ida</span>
+          <span v-if="esTraigo(p.id)" class="meta nuevo">nuevo</span>
+          <span v-if="nombreBolso(p.id)" class="meta en-bolso">{{ nombreBolso(p.id) }}</span>
         </li>
       </ul>
     </template>
+    </template>
     <p v-if="!regreso.length" class="empty" style="margin: 0">Cuando armes la maleta de ida, aquí aparece todo para traerlo de vuelta.</p>
+  </div>
+
+  <!-- Lo que no llevabas pero vuelve contigo -->
+  <div class="panel traigo">
+    <div class="ph">
+      <h3>¿Traes algo nuevo?</h3>
+      <span class="gp">{{ traigo.length }}</span>
+    </div>
+    <p class="hint" style="margin: 0; font-size: 12px">Un regalo, algo que compraste o que te prestaron. Entra a la lista de regreso y a tu armario.</p>
+    <ul class="list" v-if="traigo.length">
+      <li v-for="p in traigo" :key="p.id">
+        <span style="flex: 1; min-width: 0">{{ p.nombre }} <small class="cat">· {{ p.cat }}</small></span>
+        <button type="button" class="del" :aria-label="'Quitar ' + p.nombre" @click="delTraigo(p.id)">×</button>
+      </li>
+    </ul>
+    <form class="add" @submit.prevent="agregarTraigo">
+      <input id="traigo-nuevo" v-model="nuevoTraigo" placeholder="Ej: Mochila que me regaló mi tía" aria-label="Algo nuevo que traes" autocomplete="off" />
+      <button class="btn sm" type="submit" :disabled="!nuevoTraigo.trim()">Agregar</button>
+    </form>
   </div>
 
   <div class="panel revisar">
@@ -138,6 +175,33 @@ h4 .sub {
   padding: 2px 8px;
   border-radius: 999px;
   font-weight: 600;
+}
+.nuevo {
+  color: var(--ok);
+  font-weight: 700;
+}
+.en-bolso {
+  color: var(--lav);
+  background: var(--lav-soft);
+  padding: 1px 8px;
+  border-radius: 999px;
+}
+.traigo {
+  border-color: var(--ok);
+}
+.traigo .cat {
+  color: var(--muted);
+  font-size: 11px;
+}
+.traigo .add input {
+  font-size: 15px;
+}
+.sm {
+  padding: 5px 12px;
+  font-size: 13px;
+}
+.btn:disabled {
+  opacity: 0.5;
 }
 .regreso-intro {
   background: var(--pink-soft);

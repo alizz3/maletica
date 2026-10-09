@@ -78,6 +78,8 @@ export function viajeNuevo(id, destino, ida, vuelta) {
     cant: {},
     aloja: {},
     repaso: { noUsado: [], falto: [], notas: '' },
+    enBolso: {},
+    traigo: [],
     info: { [ida]: { actividades: ['Ida'] }, ...(vuelta !== ida ? { [vuelta]: { actividades: ['Regreso'] } } : {}) },
     checks: { ida: {}, vuelta: {} },
     fase: 'ida'
@@ -167,11 +169,15 @@ function completar(d) {
     cant: {},
     aloja: {},
     repaso: { noUsado: [], falto: [], notas: '' },
+    enBolso: {},
+    traigo: [],
     info: {},
     checks: { ida: {}, vuelta: {} },
     fase: 'ida',
     ...v
   }))
+  if (!Array.isArray(d.bolsos)) d.bolsos = []
+  if (!d.bolsoHabitual) d.bolsoHabitual = {}
   unirDuplicados(d)
   return d
 }

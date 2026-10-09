@@ -5,7 +5,9 @@ Tu armario, tu maleta y tus outfits conectados, para no llevar de más ni dejar 
 - **Armario:** todo lo que tienes, ropa y cosas (cargadores, aseo, documentos…).
 - **Maleta:** empieza vacía. Eliges del armario lo que llevas y lo chuleas al empacar.
 - **Outfits:** lo que te pones cada día, con actividades y notas. Si pones una prenda en un día, también entra a la maleta.
-- **Checklist de regreso:** todo lo que viajó (maleta + lo que llevabas puesto) para que no se quede nada, más una revisión del lugar antes de salir.
+- **Bolsos:** crea bolsos dentro de la maleta (neceser, bolsa del computador…) y mira la maleta por tipo o por bolso. Cada cosa recuerda su bolso para el próximo viaje.
+- **Checklist de regreso:** todo lo que viajó (maleta + lo que llevabas puesto) más lo nuevo que traes (regalos, compras), y una revisión del lugar antes de salir.
+- **Balance del viaje:** al terminar, qué no usaste, qué hizo falta y notas que aparecen en tus próximos viajes.
 - Varios viajes, modo claro/oscuro, login con Google y guardado en la nube.
 
 Hecho con Vue 3 + Vite, Firebase (Auth + Firestore) y Vercel.
