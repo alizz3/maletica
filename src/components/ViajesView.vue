@@ -1,6 +1,6 @@
 <script setup>
 import { reactive, ref, computed } from 'vue'
-import { s, crearViaje, borrarViaje, abrirViaje, rangoTexto, resumenViaje } from '../store.js'
+import { s, crearViaje, borrarViaje, abrirViaje, rangoTexto, resumenViaje, pideBalance, balanceHecho } from '../store.js'
 
 const hoy = new Date()
 const iso = (d) => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10)
@@ -74,7 +74,10 @@ function confirmarBorrar(id) {
       <span class="mini">
         Maleta {{ pctDe(proximo) }}% · {{ resumenViaje(proximo).dias }} días · {{ resumenViaje(proximo).conPinta }} outfits listos
       </span>
-      <button type="button" class="btn" @click="abrirViaje(proximo.id)">Continuar viaje</button>
+      <div class="row">
+        <button type="button" class="btn" @click="abrirViaje(proximo.id)">Continuar viaje</button>
+        <button v-if="pideBalance(proximo)" type="button" class="btn rosa" @click="abrirViaje(proximo.id, { balance: true })">Hacer el balance</button>
+      </div>
     </article>
 
     <h2 v-if="otros.length" class="sub">Mis viajes</h2>
@@ -88,7 +91,9 @@ function confirmarBorrar(id) {
             {{ resumenViaje(v).conPinta }}/{{ resumenViaje(v).dias }} outfits ·
             {{ resumenViaje(v).listos }}/{{ resumenViaje(v).total }} en la maleta
           </span>
+          <span v-if="balanceHecho(v) && v.repaso.notas" class="nota-v">“{{ v.repaso.notas }}”</span>
         </button>
+        <button v-if="pideBalance(v)" type="button" class="balance-chip" @click="abrirViaje(v.id, { balance: true })">Hacer el balance</button>
         <div class="trip-act">
           <template v-if="borrando === v.id">
             <span class="q">¿Borrar este viaje?</span>
@@ -128,6 +133,34 @@ function confirmarBorrar(id) {
 </template>
 
 <style scoped>
+.rosa {
+  background: var(--pink);
+}
+.trip {
+  flex-wrap: wrap;
+}
+.balance-chip {
+  order: 3;
+  flex: 1 1 100%;
+  border: 0;
+  border-top: 1px dashed var(--line);
+  background: var(--pink-soft);
+  color: var(--pink);
+  font-weight: 600;
+  font-size: 13px;
+  padding: 8px 16px;
+  text-align: left;
+}
+.nota-v {
+  margin-top: 4px;
+  font-size: 12px;
+  font-style: italic;
+  color: var(--muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
 .hero {
   background: var(--surface);
   border: 1.5px solid var(--lav);

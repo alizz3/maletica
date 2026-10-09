@@ -48,11 +48,12 @@ watch(
 )
 
 // ---------- Navegación (no se guarda) ----------
-export const ui = reactive({ pantalla: 'viajes', viajeId: null, tab: 'pintas', sinCuenta: false })
+export const ui = reactive({ pantalla: 'viajes', viajeId: null, tab: 'pintas', sinCuenta: false, balance: false })
 
-export function abrirViaje(id) {
+export function abrirViaje(id, { balance = false } = {}) {
   ui.viajeId = id
-  ui.tab = 'pintas'
+  ui.tab = balance ? 'maleta' : 'pintas'
+  ui.balance = balance
   ui.pantalla = 'viaje'
 }
 export function irAViajes() {
@@ -473,6 +474,18 @@ export function delFalto(id) {
 }
 export function setNotasRepaso(t) {
   rep().notas = t
+}
+// El balance se hace una vez, desde el último día del viaje
+const hoyISO = () => {
+  const d = new Date()
+  return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10)
+}
+export const termino = (v) => !!v && !!v.vuelta && hoyISO() >= v.vuelta
+export const balanceHecho = (v) => !!v?.repaso?.hecho
+export const pideBalance = (v) => termino(v) && !balanceHecho(v)
+export function guardarBalance() {
+  rep().hecho = true
+  ui.balance = false
 }
 
 // Lo que aprendiste en viajes anteriores, para el viaje abierto

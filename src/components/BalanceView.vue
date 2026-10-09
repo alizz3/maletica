@@ -1,6 +1,8 @@
 <script setup>
 import { ref, computed } from 'vue'
-import { viaje, CATS, viajo, noUsado, toggleNoUsado, addFalto, delFalto, setNotasRepaso, esPuesta } from '../store.js'
+import { viaje, CATS, viajo, noUsado, toggleNoUsado, addFalto, delFalto, setNotasRepaso, esPuesta, guardarBalance, balanceHecho } from '../store.js'
+
+const emit = defineEmits(['volver'])
 
 const porCat = computed(() => CATS.map((c) => ({ cat: c, items: viajo.value.filter((p) => p.cat === c) })).filter((g) => g.items.length))
 const cuantosNo = computed(() => viajo.value.filter((p) => noUsado(p.id)).length)
@@ -15,9 +17,12 @@ function agregarFalto() {
 
 <template>
   <div class="panel intro">
-    <h3>Balance del viaje</h3>
+    <div class="ph">
+      <h3>Balance del viaje</h3>
+      <button type="button" class="link" @click="emit('volver')">Volver a la maleta</button>
+    </div>
     <p class="hint" style="margin: 0">
-      Lo que anotes aquí te aparece en la maleta de tus próximos viajes, para que lleves justo lo necesario.
+      Se hace una vez, al terminar el viaje. Lo que anotes te aparece en la maleta de tus próximos viajes.
     </p>
   </div>
 
@@ -77,11 +82,24 @@ function agregarFalto() {
       :placeholder="'Ej: En ' + viaje.destino + ' hace mucho calor; con 2 shorts y 3 blusas basta. El tomacorriente queda lejos de la cama, llevar extensión.'"
       @change="setNotasRepaso($event.target.value)"
     ></textarea>
-    <p class="hint" style="margin: 0; font-size: 12px">Se guarda solo. Si vuelves a {{ viaje.destino }}, estas notas salen de primeras.</p>
+    <p class="hint" style="margin: 0; font-size: 12px">Si vuelves a {{ viaje.destino }}, estas notas salen de primeras.</p>
   </div>
+
+  <button type="button" class="btn guardar" @click="guardarBalance">
+    {{ balanceHecho(viaje) ? 'Listo' : 'Guardar balance' }}
+  </button>
 </template>
 
 <style scoped>
+.guardar {
+  align-self: stretch;
+  padding: 12px;
+  font-size: 15px;
+}
+.intro .link {
+  padding: 0;
+  font-size: 13px;
+}
 .intro {
   background: var(--lav-soft);
   border-color: transparent;

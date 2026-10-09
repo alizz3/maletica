@@ -4,7 +4,7 @@ import {
   viaje, dias, CATS, CATS_ROPA, CATS_SUELTAS, maleta, maletaDe, puesto,
   total, hechos, pct, chk, setChk, listosDe, sacarDeMaleta, meterEnMaleta,
   diasDePieza, recomendado, avisos, llevarTodasLasDePintas, textoLista, addComprar, delComprar, comprado,
-  cantidad, setCantidad, noUsadoAntes
+  cantidad, setCantidad, noUsadoAntes, ui, pideBalance, balanceHecho
 } from '../store.js'
 import RegresoView from './RegresoView.vue'
 import PickerArmario from './PickerArmario.vue'
@@ -15,11 +15,14 @@ import LeccionesPanel from './LeccionesPanel.vue'
 const pesadas = ['Abajo', 'Zapatos', 'Abrigo']
 const aviso = ref('')
 const soloPendientes = ref(false)
-// Vista: 'ida' | 'vuelta' (guardadas en el viaje) | 'balance'
-const balance = ref(false)
-const modo = computed(() => (balance.value ? 'balance' : viaje.value.fase))
+// Vista: 'ida' | 'vuelta' (guardadas en el viaje) | 'balance' (una vez, al terminar el viaje)
+const modo = computed(() => (ui.balance ? 'balance' : viaje.value.fase))
+const terminaHoy = computed(() => {
+  const d = new Date()
+  return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10) === viaje.value.vuelta
+})
 function irA(m) {
-  balance.value = m === 'balance'
+  ui.balance = m === 'balance'
   if (m !== 'balance') viaje.value.fase = m
 }
 const abierta = ref(null) // categoría con el armario desplegado
@@ -109,7 +112,6 @@ const iconoAviso = { pintas: '+', falta: '!', exceso: '⇣' }
       <div class="seg" role="group" aria-label="Fase">
         <button type="button" :class="{ on: modo === 'ida' }" @click="irA('ida')">Ida</button>
         <button type="button" :class="{ on: modo === 'vuelta' }" @click="irA('vuelta')">Regreso</button>
-        <button type="button" :class="{ on: modo === 'balance' }" @click="irA('balance')">Balance</button>
       </div>
       <div class="row acciones" v-if="modo === 'ida'">
         <button type="button" class="btn ghost" @click="importando = !importando">Importar lista</button>
@@ -136,7 +138,24 @@ const iconoAviso = { pintas: '+', falta: '!', exceso: '⇣' }
       <button v-if="deshacer" type="button" class="link" @click="undo">Deshacer</button>
     </p>
 
-    <BalanceView v-if="modo === 'balance'" />
+    <!-- El balance aparece solo cuando el viaje termina -->
+    <div v-if="modo !== 'balance' && pideBalance(viaje)" class="panel pide">
+      <strong>{{ terminaHoy ? 'Hoy termina tu viaje a ' + viaje.destino : 'Tu viaje a ' + viaje.destino + ' terminó' }} ✨</strong>
+      <span class="hint">Haz el balance: qué no usaste, qué te hizo falta y notas para la próxima vez. Toma un minuto.</span>
+      <button type="button" class="btn sm" @click="irA('balance')">Hacer el balance</button>
+    </div>
+    <div v-else-if="modo !== 'balance' && balanceHecho(viaje)" class="panel hecho">
+      <div class="ph">
+        <h3>Balance del viaje</h3>
+        <button type="button" class="link" @click="irA('balance')">Ver o editar</button>
+      </div>
+      <p v-if="viaje.repaso.notas" class="nota-res">{{ viaje.repaso.notas }}</p>
+      <p class="hint" style="margin: 0; font-size: 12px">
+        {{ viaje.repaso.noUsado.length }} sin usar · {{ viaje.repaso.falto.length }} hicieron falta
+      </p>
+    </div>
+
+    <BalanceView v-if="modo === 'balance'" @volver="irA(viaje.fase)" />
 
     <RegresoView v-else-if="modo === 'vuelta'" :solo-pendientes="soloPendientes" />
 
@@ -438,6 +457,28 @@ h4 .sub {
   font-size: 13px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
+}
+.pide {
+  border-color: var(--pink);
+  background: var(--pink-soft);
+  gap: 6px;
+}
+.pide .btn {
+  align-self: flex-start;
+  background: var(--pink);
+}
+.hecho .link {
+  padding: 0;
+  font-size: 13px;
+}
+.nota-res {
+  margin: 0;
+  font-size: 14px;
+  white-space: pre-line;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 .sec .list li {
   flex-wrap: wrap;
