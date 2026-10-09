@@ -447,6 +447,81 @@ export function comprado(id) {
   delComprar(id)
 }
 
+// ---------- Balance del viaje ----------
+// Al volver: qué no usaste, qué te hizo falta y notas para la próxima vez.
+const rep = () => {
+  const v = viaje.value
+  if (!v.repaso) v.repaso = { noUsado: [], falto: [], notas: '' }
+  return v.repaso
+}
+// Todo lo que viajó: lo puesto en la ida + la maleta
+export const viajo = computed(() => {
+  if (!viaje.value) return []
+  const ids = new Set([...(viaje.value.llevo || []), ...puestoIds.value])
+  return s.prendas.filter((p) => ids.has(p.id)).sort(alfa)
+})
+export const noUsado = (id) => (viaje.value?.repaso?.noUsado || []).includes(id)
+export function toggleNoUsado(id) {
+  const r = rep()
+  r.noUsado = r.noUsado.includes(id) ? r.noUsado.filter((x) => x !== id) : [...r.noUsado, id]
+}
+export function addFalto(nombre) {
+  if (nombre.trim()) rep().falto.push({ id: 'f' + ++s.seq, nombre: nombre.trim() })
+}
+export function delFalto(id) {
+  rep().falto = rep().falto.filter((f) => f.id !== id)
+}
+export function setNotasRepaso(t) {
+  rep().notas = t
+}
+
+// Lo que aprendiste en viajes anteriores, para el viaje abierto
+const mismoLugar = (a, b) => {
+  const x = plano(a)
+  const y = plano(b)
+  return !!x && !!y && (x === y || x.includes(y) || y.includes(x))
+}
+export const lecciones = computed(() => {
+  const v = viaje.value
+  if (!v) return { notas: [], falto: [], noUsado: [] }
+  const otros = s.viajes
+    .filter((o) => o.id !== v.id && o.repaso)
+    .sort((a, b) => (b.vuelta || '').localeCompare(a.vuelta || ''))
+  const notas = otros
+    .filter((o) => (o.repaso.notas || '').trim())
+    .map((o) => ({ id: o.id, destino: o.destino, rango: rangoTexto(o), texto: o.repaso.notas.trim(), mismo: mismoLugar(o.destino, v.destino) }))
+    .sort((a, b) => b.mismo - a.mismo)
+  const vistos = new Set()
+  const falto = []
+  otros.forEach((o) =>
+    (o.repaso.falto || []).forEach((f) => {
+      const k = plano(f.nombre)
+      if (vistos.has(k)) return
+      vistos.add(k)
+      const existe = s.prendas.find((p) => plano(p.nombre) === k)
+      if (existe && enMaleta(existe.id)) return // ya lo llevas esta vez
+      falto.push({ nombre: f.nombre, destino: o.destino, existeId: existe ? existe.id : null })
+    })
+  )
+  const cuenta = {}
+  otros.forEach((o) =>
+    (o.repaso.noUsado || []).forEach((id) => {
+      if (!cuenta[id]) cuenta[id] = []
+      cuenta[id].push(o.destino)
+    })
+  )
+  const noUsadoL = Object.entries(cuenta)
+    .map(([id, destinos]) => ({ prenda: s.prendas.find((p) => p.id === id), destinos }))
+    .filter((x) => x.prenda)
+    .sort((a, b) => b.destinos.length - a.destinos.length || alfa(a.prenda, b.prenda))
+  return { notas, falto, noUsado: noUsadoL }
+})
+// En qué viajes anteriores llevaste esto y no lo usaste
+export const noUsadoAntes = (id) => lecciones.value.noUsado.find((x) => x.prenda.id === id)?.destinos || []
+export function llevarLoQueFalto(f) {
+  meterEnMaleta(f.existeId || addPrenda(f.nombre, adivinarCat(f.nombre)))
+}
+
 // ---------- Alojamiento ----------
 export function setAloja(campo, valor) {
   const v = viaje.value

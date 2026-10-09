@@ -77,6 +77,7 @@ export function viajeNuevo(id, destino, ida, vuelta) {
     comprar: [],
     cant: {},
     aloja: {},
+    repaso: { noUsado: [], falto: [], notas: '' },
     info: { [ida]: { actividades: ['Ida'] }, ...(vuelta !== ida ? { [vuelta]: { actividades: ['Regreso'] } } : {}) },
     checks: { ida: {}, vuelta: {} },
     fase: 'ida'
@@ -165,6 +166,7 @@ function completar(d) {
     comprar: [],
     cant: {},
     aloja: {},
+    repaso: { noUsado: [], falto: [], notas: '' },
     info: {},
     checks: { ida: {}, vuelta: {} },
     fase: 'ida',

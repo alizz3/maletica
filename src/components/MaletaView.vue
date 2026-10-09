@@ -4,15 +4,24 @@ import {
   viaje, dias, CATS, CATS_ROPA, CATS_SUELTAS, maleta, maletaDe, puesto,
   total, hechos, pct, chk, setChk, listosDe, sacarDeMaleta, meterEnMaleta,
   diasDePieza, recomendado, avisos, llevarTodasLasDePintas, textoLista, addComprar, delComprar, comprado,
-  cantidad, setCantidad
+  cantidad, setCantidad, noUsadoAntes
 } from '../store.js'
 import RegresoView from './RegresoView.vue'
 import PickerArmario from './PickerArmario.vue'
 import ImportarLista from './ImportarLista.vue'
+import BalanceView from './BalanceView.vue'
+import LeccionesPanel from './LeccionesPanel.vue'
 
 const pesadas = ['Abajo', 'Zapatos', 'Abrigo']
 const aviso = ref('')
 const soloPendientes = ref(false)
+// Vista: 'ida' | 'vuelta' (guardadas en el viaje) | 'balance'
+const balance = ref(false)
+const modo = computed(() => (balance.value ? 'balance' : viaje.value.fase))
+function irA(m) {
+  balance.value = m === 'balance'
+  if (m !== 'balance') viaje.value.fase = m
+}
 const abierta = ref(null) // categoría con el armario desplegado
 const importando = ref(false)
 const nuevaCompra = ref('')
@@ -98,16 +107,17 @@ const iconoAviso = { pintas: '+', falta: '!', exceso: '⇣' }
     <h2 id="t-maleta" class="sr-only">Maleta</h2>
     <div class="row" style="justify-content: space-between">
       <div class="seg" role="group" aria-label="Fase">
-        <button type="button" :class="{ on: viaje.fase === 'ida' }" @click="viaje.fase = 'ida'">Empacar (ida)</button>
-        <button type="button" :class="{ on: viaje.fase === 'vuelta' }" @click="viaje.fase = 'vuelta'">Checklist de regreso</button>
+        <button type="button" :class="{ on: modo === 'ida' }" @click="irA('ida')">Ida</button>
+        <button type="button" :class="{ on: modo === 'vuelta' }" @click="irA('vuelta')">Regreso</button>
+        <button type="button" :class="{ on: modo === 'balance' }" @click="irA('balance')">Balance</button>
       </div>
-      <div class="row acciones" v-if="viaje.fase === 'ida'">
+      <div class="row acciones" v-if="modo === 'ida'">
         <button type="button" class="btn ghost" @click="importando = !importando">Importar lista</button>
         <button v-if="maleta.length" type="button" class="btn ghost" @click="copiar">Copiar lista</button>
       </div>
     </div>
 
-    <div class="progress" v-if="total">
+    <div class="progress" v-if="total && modo !== 'balance'">
       <div class="bar" role="progressbar" :aria-valuenow="pct" aria-valuemin="0" aria-valuemax="100"><i :style="{ width: pct + '%' }"></i></div>
       <div class="row" style="justify-content: space-between">
         <span class="count">
@@ -126,10 +136,14 @@ const iconoAviso = { pintas: '+', falta: '!', exceso: '⇣' }
       <button v-if="deshacer" type="button" class="link" @click="undo">Deshacer</button>
     </p>
 
-    <RegresoView v-if="viaje.fase === 'vuelta'" :solo-pendientes="soloPendientes" />
+    <BalanceView v-if="modo === 'balance'" />
+
+    <RegresoView v-else-if="modo === 'vuelta'" :solo-pendientes="soloPendientes" />
 
     <template v-else>
       <ImportarLista v-if="importando" @cerrar="importando = false" @listo="terminoImportar" />
+
+      <LeccionesPanel />
 
       <ul v-if="avisos.length" class="avisos" aria-label="Para revisar">
         <li v-for="(a, i) in avisos" :key="i" :class="a.tipo">
@@ -185,6 +199,7 @@ const iconoAviso = { pintas: '+', falta: '!', exceso: '⇣' }
                   <span v-else-if="diasDePieza(p.id).length === 1 && pesadas.includes(p.cat)" class="meta warn" title="Ocupa espacio y solo la usas un día">solo {{ diasDePieza(p.id)[0] }}</span>
                   <span v-else-if="diasDePieza(p.id).length === 1" class="meta">{{ diasDePieza(p.id)[0] }}</span>
                 </template>
+                <span v-if="noUsadoAntes(p.id).length" class="meta warn" :title="'Lo llevaste a ' + noUsadoAntes(p.id).join(', ') + ' y no lo usaste'">sin usar antes</span>
                 <span v-if="editandoCant === p.id" class="stepper" v-fuera="() => (editandoCant = null)">
                   <button type="button" :disabled="cantidad(p.id) <= 1" :aria-label="'Una menos de ' + p.nombre" @click="setCantidad(p.id, cantidad(p.id) - 1)">−</button>
                   <output :for="'chk-p-' + p.id">{{ cantidad(p.id) }}</output>
@@ -423,6 +438,28 @@ h4 .sub {
   font-size: 13px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
+}
+.sec .list li {
+  flex-wrap: wrap;
+  row-gap: 4px;
+}
+.sec .list li label {
+  /* deja espacio solo para cantidad y ×; las etiquetas bajan a la siguiente línea */
+  flex: 1 0 calc(100% - 140px);
+  min-width: 0;
+}
+.sec .list li .qty,
+.sec .list li .stepper,
+.sec .list li .del {
+  order: 1;
+}
+.sec .list li .meta {
+  order: 2;
+  margin-left: 34px;
+}
+.sec .list li.puesta .meta {
+  order: 0;
+  margin-left: 0;
 }
 .sec {
   display: flex;
